@@ -139,7 +139,7 @@ export function renderAttemptsChart(runs, words, focusedIds, maxGuesses) {
       </td>`;
     }).join('')}
   </tr>`).join('');
-  return `<table class="attempts-table" aria-label="Attempts used to solve each word. Lower is better. Fail means not solved within ${maxGuesses} attempts.">
+  return `<table class="attempts-table" style="--participant-count:${runs.length}" aria-label="Attempts used to solve each word. Lower is better. Fail means not solved within ${maxGuesses} attempts.">
     <thead><tr><th scope="col">Word</th>${headers}</tr></thead><tbody>${rows}</tbody>
   </table>`;
 }

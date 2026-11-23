@@ -1,4 +1,14 @@
 model,effort,round,answer,status,attempts,best_rank,best_rank_at_10,best_rank_at_25,best_rank_at_50,steps_to_top_100,steps_to_top_10,longest_stagnation,repeat_rate,observed_duration_ms,time_to_solve_ms,solve_time_basis
+gpt-6-astra,high,en-01,lantern,solved,30,1,1453,74,1,25,27,10,0,154857,163404,agent_start_to_winning_result
+gpt-6-astra,high,en-02,volcano,exhausted,50,1019,3278,3278,1019,,,32,0,263848,,
+gpt-6-astra,high,en-03,needle,solved,34,1,456,225,1,29,34,9,0,165038,173765,agent_start_to_winning_result
+gpt-6-astra,high,en-04,harvest,exhausted,50,1395,6020,1395,1395,,,33,0,247591,,
+gpt-6-astra,high,en-05,library,solved,19,1,2434,1,1,15,17,6,0,80961,88965,agent_start_to_winning_result
+gpt-6-astra,high,en-06,justice,solved,29,1,6067,60,1,22,29,6,0,154398,163521,agent_start_to_winning_result
+gpt-6-astra,high,en-07,curiosity,exhausted,50,369,14334,2548,369,,,12,0,455910,,
+gpt-6-astra,high,en-08,permission,exhausted,50,719,2707,2173,719,,,31,0,637050,,
+gpt-6-astra,high,en-09,loyalty,exhausted,50,435,5559,3818,435,,,16,0,266141,,
+gpt-6-astra,high,en-10,pattern,solved,11,1,30,1,1,8,11,2,0,55593,64288,agent_start_to_winning_result
 gpt-6.2-astra,high,en-01,lantern,solved,38,1,1453,313,1,27,33,11,0,98673,112293,agent_start_to_winning_result
 gpt-6.2-astra,high,en-02,volcano,solved,37,1,11448,2180,1,35,37,9,0,114604,126236,agent_start_to_winning_result
 gpt-6.2-astra,high,en-03,needle,exhausted,50,633,3046,1299,633,,,20,0,174466,,

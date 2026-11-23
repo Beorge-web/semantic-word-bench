@@ -594,10 +594,21 @@ h1 {
 
 .attempts-table {
   width: 100%;
+  min-width: calc(82px + var(--participant-count, 4) * 60px);
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+#chart-attempts {
+  overflow-x: auto;
+}
+
+#effort-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .attempts-table th,

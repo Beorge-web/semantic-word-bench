@@ -14,6 +14,7 @@ English baseline, November 2026. Each completed participant attempted the same 1
 | GPT-6.2 Sol high | 7/10 | 50.9 | 2.81 s | 2.57 s |
 | Gemini 4 Neon low | 4/10 | 73.6 | 10.41 s | 7.43 s |
 | Gemini 4 Neon medium | 5/10 | 64.4 | 12.27 s | 10.52 s |
+| GPT-6 Astra high | 5/10 | 62.3 | 6.84 s | 5.44 s |
 | GPT-6.2 Astra high | 5/10 | 64.8 | 3.29 s | 2.78 s |
 
 PAR2 assigns 100 attempts to an unsolved round, then averages across all rounds. Lower is better. Timing is a separate measurement and does not affect PAR2. Interaction cycles are intervals between consecutive CLI results within a round, excluding its first result. They include model generation, agent work, and CLI startup. They are not provider TTFT.
@@ -30,11 +31,12 @@ Hit@k is a secondary proximity measure: the number of rounds where a guess reach
 | GPT-6.2 Sol high | 7/10 | 7/10 | 7/10 | 8/10 | 10/10 |
 | Gemini 4 Neon low | 4/10 | 4/10 | 4/10 | 4/10 | 6/10 |
 | Gemini 4 Neon medium | 5/10 | 5/10 | 5/10 | 6/10 | 8/10 |
+| GPT-6 Astra high | 5/10 | 5/10 | 5/10 | 5/10 | 8/10 |
 | GPT-6.2 Astra high | 5/10 | 5/10 | 5/10 | 6/10 | 10/10 |
 
 Hit@2 and Hit@10 add no near misses in these completed trials. Hit@100 includes one additional unsolved round for Sol 6.2, Neon medium and Astra 6.2. The dashboard shows these thresholds separately from exact wins and compares attempts for each word.
 
-[Astra results, raw events and audit](results/2026-11-24-astra-high-en/README.md) are separate source records and join the same Numberbatch v1 collection. The Astra 6 trial is still in progress and is excluded until all 10 English rounds finish.
+[Astra results, raw events and audit](results/2026-11-24-astra-high-en/README.md) include both completed Astra trials and join the same Numberbatch v1 collection. All 20 Astra round transcripts passed the command audit. Machine workload was not controlled during these experiments. Astra 6 includes a 326.7-second interaction cycle; its mean retains that observation, and its median is reported separately.
 
 [Neon results and four-model comparison](results/2026-11-23-neon-en/README.md) · [CSV](results/2026-11-23-neon-en/rounds.csv) · [Raw comparison](results/2026-11-23-neon-en/comparison.json) · [Neon agent audit](results/2026-11-23-neon-en/audit.json)
 
