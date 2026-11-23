@@ -1,0 +1,46 @@
+{
+  "id": "semantic-word-bench-v1",
+  "version": 1,
+  "max_guesses": 50,
+  "embedding": "ConceptNet Numberbatch 19.08 mini, int8, 300 dimensions",
+  "source_url": "https://conceptnet.s3.amazonaws.com/precomputed-data/2016/numberbatch/19.08/mini.h5",
+  "source_sha256": "15cff2f04a8987b2e8dfbcec76faf7275a95104dbd8ea7b4c428053a095513ad",
+  "frequency_source": "wordfreq 3.1.1, top_n_list best, first 200000",
+  "license": "CC-BY-SA-4.0",
+  "languages": {
+    "ru": {
+      "file": "ru.json.gz",
+      "sha256": "b9afdf7fe3c46ed9f3798271ce2cba88b60d41004ea5db08d3d351c17e29759a",
+      "vocabulary_size": 50000,
+      "rounds": [
+        "ru-01",
+        "ru-02",
+        "ru-03",
+        "ru-04",
+        "ru-05",
+        "ru-06",
+        "ru-07",
+        "ru-08",
+        "ru-09",
+        "ru-10"
+      ]
+    },
+    "en": {
+      "file": "en.json.gz",
+      "sha256": "ef7e0d15e5fb8a0676d41528f520b02889e33c33ac57f1a0aadf992b44d8aa11",
+      "vocabulary_size": 50000,
+      "rounds": [
+        "en-01",
+        "en-02",
+        "en-03",
+        "en-04",
+        "en-05",
+        "en-06",
+        "en-07",
+        "en-08",
+        "en-09",
+        "en-10"
+      ]
+    }
+  }
+}

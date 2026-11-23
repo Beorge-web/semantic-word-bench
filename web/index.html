@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Semantic Word Bench</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header><p class="eyebrow">SEMANTIC SEARCH / V1</p><h1>Semantic Word Bench</h1><p id="suite-description" class="muted">Загрузка набора заданий…</p></header>
+  <p id="error" class="notice error" role="alert" hidden></p>
+  <section id="setup">
+    <h2>Новый запуск</h2>
+    <p class="muted">Один запуск содержит 20 независимых раундов. Для каждого раунда открой новый чат модели.</p>
+    <form id="new-run">
+      <div class="fields"><label>Модель<input name="model" required maxlength="120" placeholder="Gemini 4 Neon"></label><label>Провайдер / агент<input name="provider" required maxlength="120" placeholder="Antigravity"></label><label>Режим рассуждения<input name="effort" required maxlength="120" placeholder="high"></label><label>Интерфейс<select name="track"><option value="browser">Браузер</option><option value="http">HTTP API</option></select></label><label>Повтор<input name="repetition" type="number" min="1" max="100" value="1" required></label></div>
+      <button class="primary" type="submit">Создать запуск</button>
+    </form>
+    <p class="small muted">Для продолжения сохранённого запуска открой его ссылку. Приложение хранит попытки на сервере.</p>
+  </section>
+  <section id="workspace" hidden>
+    <div class="run-header"><div><strong id="run-label"></strong><p class="small muted" id="run-context"></p></div><button id="new-link" type="button">Новый запуск</button></div>
+    <nav class="tabs" aria-label="Раздел"><button id="play-tab" type="button" aria-selected="true">Игра</button><button id="results-tab" type="button" aria-selected="false">Результаты</button></nav>
+    <section id="play-panel">
+      <div class="toolbar"><label id="round-label">Раунд<select id="round-select"></select></label><button id="copy-prompt" type="button">Скопировать промпт</button><a id="prompt-link" target="_blank" rel="noreferrer">Текст промпта</a></div>
+      <div class="round-head"><h2 id="round-title"></h2><span id="status" class="badge"></span></div>
+      <p id="rules" class="muted"></p>
+      <div class="stats"><div><span id="attempt-caption" class="muted small">Попытки</span><strong id="attempts">0 / 50</strong></div><div><span id="best-caption" class="muted small">Лучший ранг</span><strong id="best">—</strong></div><div><span id="clock-caption" class="muted small">Средний цикл</span><strong id="cycle">—</strong></div></div>
+      <form id="guess-form"><label class="sr-only" id="word-label" for="word">Слово</label><input id="word" name="word" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="200" required><button id="submit-guess" class="primary" type="submit">Проверить</button></form>
+      <p id="feedback" role="status" class="notice" hidden></p>
+      <div class="toolbar"><button id="abandon" class="quiet" type="button">Сдаться</button><span class="small muted" id="round-instruction"></span></div>
+      <div class="table-wrap"><table><thead><tr><th id="col-attempt">Попытка</th><th id="col-word">Слово</th><th id="col-rank" class="numeric">Ранг</th><th id="col-note">Результат</th></tr></thead><tbody id="history"></tbody></table></div>
+      <details><summary id="prompt-summary">Промпт этого раунда</summary><pre id="prompt-text"></pre></details>
+    </section>
+    <section id="results-panel" hidden>
+      <h2>Результаты запуска</h2><p id="completion" class="notice"></p>
+      <div class="table-wrap"><table><thead><tr><th>Выборка</th><th class="numeric">Разгадано</th><th class="numeric">PAR2</th><th class="numeric">Попытки в решённых</th><th class="numeric">Средний цикл</th></tr></thead><tbody id="metrics"></tbody></table></div>
+      <p class="small muted">PAR2 считает неразгаданный раунд как 100 попыток. Меньше лучше. Время не входит в PAR2. Сравнивай завершённые запуски с одинаковыми отпечатками набора и протокола.</p>
+      <p id="quality-notes"></p>
+      <div class="table-wrap"><table><thead><tr><th>Раунд</th><th>Статус</th><th class="numeric">Попытки</th><th class="numeric">Лучший ранг</th></tr></thead><tbody id="round-results"></tbody></table></div>
+      <div class="toolbar"><button id="export" class="primary" type="button">Скачать JSON</button><button id="finish" type="button">Завершить оставшиеся как неудачи</button></div>
+      <form id="intervention-form"><label>Помощь человека или отклонение от протокола<input id="intervention" required maxlength="1000" placeholder="Что изменили во время запуска"></label><button type="submit">Записать вмешательство</button></form>
+      <p class="small muted" id="fingerprints"></p>
+    </section>
+  </section>
+  <footer><details><summary>Что измеряет этот тест</summary><p>Семантический поиск с обратной связью. Качество определяют разгаданные слова и число попыток. Это узкая проверка, она не определяет общий интеллект и качество работы с кодом.</p><p>Оценки зафиксированы по ConceptNet Numberbatch. Ни ответы, ни словарь с рангами не отправляются браузеру. Модель получает только свои попытки и их ранги. Повторы и неизвестные слова расходуют попытку. Подсказок нет.</p><p>Цикл измеряется между подготовкой последовательных ответов сервера в одном раунде. Он включает выбор слова, работу агента и транспорт. Это не TTFT. Первый ответ и переключения между раундами исключены.</p><p>20 заданий дают пилотный результат. Повторяй раунды в новых чатах и сохраняй режим, версию модели и вмешательства.</p></details></footer>
+</main>
+</body>
+</html>
