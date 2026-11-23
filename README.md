@@ -6,18 +6,24 @@ Written in JavaScript and run with Bun. SQLite is built into Bun. Scoring uses f
 
 ## Results
 
-English baseline, November 23, 2026. Each model attempted the same 10 English words once, with high reasoning effort, the default service tier, and a limit of 50 submissions per round. Each round used a fresh Codex agent context. The prompts explained the rules without suggesting a search strategy. There were no human interventions.
+English baseline, November 23, 2026. Each model attempted the same 10 English words once, with a limit of 50 submissions per round. Sol used Codex with high reasoning effort and the default service tier. Neon used Antigravity GoogleMain with low or medium thought level. Each round used a fresh agent context. The prompts explained the rules without suggesting a search strategy. There were no human interventions.
 
 | Model | Solved | PAR2, attempts | Mean interaction cycle | Median interaction cycle |
 | --- | ---: | ---: | ---: | ---: |
 | GPT-6.1 Sol high | 3/10 | 78.1 | 4.57 s | 4.38 s |
 | GPT-6.2 Sol high | 7/10 | 50.9 | 2.81 s | 2.57 s |
+| Gemini 4 Neon low | 4/10 | 73.6 | 10.41 s | 7.43 s |
+| Gemini 4 Neon medium | 5/10 | 64.4 | 12.27 s | 10.52 s |
 
 PAR2 assigns 100 attempts to an unsolved round, then averages across all rounds. Lower is better. Timing is a separate measurement and does not affect PAR2. Interaction cycles are intervals between consecutive CLI results within a round, excluding its first result. They include model generation, agent work, and CLI startup. They are not provider TTFT.
 
+Providers differ, and the trials ran at different times. Timing measures the complete model and agent system under those conditions. Antigravity did not report `executedModel`; the Neon audit verifies the configured `gemini-4-neon` model and `thought_level` setting.
+
 These results cover only the English subset. Russian rounds were not run and are excluded from the reported metrics. This is one trial on 10 selected words, not a general ranking of model intelligence.
 
-[Full report and methodology](results/2026-11-23-sol-high-en/README.md) · [CSV](results/2026-11-23-sol-high-en/rounds.csv) · [Raw results](results/2026-11-23-sol-high-en/comparison.json) · [Agent audit](results/2026-11-23-sol-high-en/audit.json)
+[Neon results and four-model comparison](results/2026-11-23-neon-en/README.md) · [CSV](results/2026-11-23-neon-en/rounds.csv) · [Raw comparison](results/2026-11-23-neon-en/comparison.json) · [Neon agent audit](results/2026-11-23-neon-en/audit.json)
+
+[Earlier Sol report and methodology](results/2026-11-23-sol-high-en/README.md)
 
 ## Quick start
 
