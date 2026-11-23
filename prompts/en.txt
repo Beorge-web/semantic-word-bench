@@ -1,9 +1,8 @@
 Guess the hidden English word in round {ROUND_ID}. Game interface: {ROUND_ENTRY}.
 Use only the game interface. After each guess, wait for the result and choose the next word. Submit one word per attempt.
 {INTERFACE_RULE}
-Rank 1 means a win. Lower ranks mean greater semantic similarity. The difference between ranks is not a numerical semantic distance.
-Explore different semantic domains. Develop promising directions and reconsider a hypothesis after cold guesses.
-Goal: find the word using as few attempts as possible within the game's limit. Unknown words and repeated guesses also consume attempts. Use single words in their base form. Case is ignored.
+The rank field is the word's position in a dictionary of {VOCABULARY_SIZE} words sorted by semantic similarity to the answer. Rank 1 means the exact answer and a win. Lower is closer: rank 50 is closer than 5000. Similarity concerns meaning and usage context, not shared letters. A rank is neither a numerical distance nor a percentage. Differences between ranks do not measure the size of a semantic difference.
+Goal: find the word using as few attempts as possible. Limit: {MAX_GUESSES} submissions per round. Unknown words, invalid formats and repeated guesses also consume attempts. A null rank means no score is available; the error field explains why. Use single words in the assigned language with 2 to 30 letters. Case is ignored.
 Continue independently until you win or exhaust the attempt budget. Human hints are prohibited. If you cannot continue, give up using the abandon action.
 Use only the assigned interface, your round and its current history. Execute the supplied command as a ready-made tool. Reading project files, vectors or the dictionary, viewing other rounds, external search and programmatic calculation of answers are outside the test rules.
 After finishing, report the status and attempt count. Do not start other rounds.

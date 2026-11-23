@@ -17,14 +17,16 @@ const interfaces = {
 };
 
 export const templates = () => Object.fromEntries(['ru', 'en'].map(language => [language, readFileSync(resolve(root, `prompts/${language}.txt`), 'utf8').replaceAll('\r\n', '\n')]));
-export const protocolFingerprint = () => createHash('sha256').update(JSON.stringify({ version: 2, templates: templates(), interfaces })).digest('hex');
+export const protocolFingerprint = () => createHash('sha256').update(JSON.stringify({ version: 3, templates: templates(), interfaces })).digest('hex');
 
-export function renderPrompt(run, roundId, { origin = '', cliCommand = `bun "${resolve(root, 'cli.js')}"` } = {}) {
+export function renderPrompt(run, roundId, { origin = '', cliCommand = `bun "${resolve(root, 'cli.js')}"`, maxGuesses } = {}) {
   const round = run.rounds[roundId];
   if (!round) throw new Error('Unknown round');
+  if (!Number.isInteger(maxGuesses)) throw new Error('Prompt requires the attempt limit');
   const values = {
     INTERFACE_RULE: interfaces[round.language][run.metadata.track], RUN_ID: run.id, ROUND_ID: roundId,
     ROUND_ENTRY: run.metadata.track === 'cli' ? 'CLI' : `${origin}/?run=${run.id}&round=${roundId}`, CLI_COMMAND: cliCommand,
+    VOCABULARY_SIZE: String(round.vocabulary_size), MAX_GUESSES: String(maxGuesses),
   };
   let text = templates()[round.language].replaceAll('{INTERFACE_RULE}', values.INTERFACE_RULE);
   for (const [key, value] of Object.entries(values)) text = text.replaceAll(`{${key}}`, value);

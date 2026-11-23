@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { App } from '../src/app.js';
@@ -30,6 +30,16 @@ test('semantic orientation and normalization are preserved', () => {
   expect(suite.lookup('ru-01', 'море').rank).toBeLessThan(suite.lookup('ru-01', 'договор').rank);
   expect(normalize('  ЁЖ ')).toBe('еж');
   expect(normalize('LIBRARY')).toBe('library');
+});
+
+test('manifest line endings do not change the dataset identity', () => {
+  const path = mkdtempSync(resolve(directory, 'line-endings-'));
+  for (const language of ['ru', 'en']) copyFileSync(resolve(root, `data/${language}.json.gz`), resolve(path, `${language}.json.gz`));
+  const text = readFileSync(resolve(root, 'data/manifest.json'), 'utf8').replaceAll('\r\n', '\n');
+  for (const manifest of [text, text.replaceAll('\n', '\r\n')]) {
+    writeFileSync(resolve(path, 'manifest.json'), manifest);
+    expect(new Suite(path).fingerprint).toBe('c497f4347aa6cb3515e939da2d6b0b89dbd863a05508db4e63f5b061a125de51');
+  }
 });
 
 test('public metadata contains no target words or rank tables', () => {
@@ -126,12 +136,16 @@ test('CLI prompts include the actual database and no browser requirement', () =>
   const app = new App({ database, suite });
   try {
     const run = app.create(metadata);
+    expect(run.metadata.prompt_mode).toBe('baseline');
     for (const id of ['ru-01', 'en-01']) {
       const prompt = app.prompt(run.id, id);
       expect(prompt).toContain(database);
       expect(prompt).toContain(`guess ${run.id} ${id}`);
       expect(prompt).not.toMatch(/\{[A-Z_]+\}/);
       expect(prompt).not.toMatch(/HTTP|browser|браузер|кнопк/);
+      expect(prompt).toContain('50000');
+      expect(prompt).toContain('50');
+      expect(prompt).toContain('null');
     }
   } finally { app.close(); }
 });

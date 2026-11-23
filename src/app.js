@@ -21,7 +21,7 @@ export class App {
     if (!Number.isInteger(repetition) || repetition < 1 || repetition > 100) throw new Error('Invalid repetition');
     return this.store.create({
       id: randomUUID().replaceAll('-', ''), created_at: new Date().toISOString(),
-      metadata: { ...metadata, repetition }, suite_id: this.suite.manifest.id, suite_fingerprint: this.suite.fingerprint,
+      metadata: { ...metadata, repetition, prompt_mode: 'baseline' }, suite_id: this.suite.manifest.id, suite_fingerprint: this.suite.fingerprint,
       protocol_fingerprint: protocolFingerprint(), interventions: [],
       rounds: Object.fromEntries(this.suite.public().rounds.map(round => [round.id, { ...round, status: 'pending', best_rank: null, events: [] }])),
     });
@@ -30,7 +30,7 @@ export class App {
   get(id) { return this.store.get(id); }
   present(run) { return { ...run, summary: summarize(run, this.suite.limit) }; }
   prompt(id, roundId, options) {
-    return renderPrompt(this.get(id), roundId, { cliCommand: `bun "${resolve(root, 'cli.js')}" --database "${this.database}"`, ...options });
+    return renderPrompt(this.get(id), roundId, { cliCommand: `bun "${resolve(root, 'cli.js')}" --database "${this.database}"`, maxGuesses: this.suite.limit, ...options });
   }
 
   change(id, action, body = {}) {

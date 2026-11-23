@@ -14,7 +14,8 @@ export class Suite {
     this.limit = this.manifest.max_guesses;
     this.words = new Map();
     this.tables = new Map();
-    const fingerprint = createHash('sha256').update(manifest);
+    const canonicalManifest = manifest.toString('utf8').replace(/\r?\n/g, '\r\n');
+    const fingerprint = createHash('sha256').update(canonicalManifest);
     for (const [language, info] of Object.entries(this.manifest.languages)) {
       const compressed = readFileSync(resolve(directory, info.file));
       if (createHash('sha256').update(compressed).digest('hex') !== info.sha256) throw new Error(`Dataset checksum mismatch: ${language}`);
