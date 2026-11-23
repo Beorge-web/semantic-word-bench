@@ -50,6 +50,7 @@ bun run preview:site
 Repository root includes `vercel.json` configured with:
 
 - Framework preset: Other (`"framework": null`)
+- Install command: skipped (`"installCommand": ""`), because the static site has no external dependencies
 - Build command: `node scripts/build-site.js`
 - Output directory: `dist`
 
@@ -60,6 +61,8 @@ To deploy from GitHub:
 3. Deploy to publish the static results viewer.
 
 [Deploy with Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FBeorge-web%2Fsemantic-word-bench)
+
+An empty `installCommand` [skips Vercel's dependency installation](https://vercel.com/docs/project-configuration/vercel-json#installcommand). The dashboard build uses only Node.js built-in modules and the files in this repository.
 
 ## Quick start
 
