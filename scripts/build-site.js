@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const siteDir = resolve(root, 'site');
+const siteDataPath = resolve(siteDir, 'data/results.json');
 const distDir = resolve(root, 'dist');
 const comparisonPath = resolve(root, 'results/2026-11-23-neon-en/comparison.json');
 const neonAuditPath = resolve(root, 'results/2026-11-23-neon-en/audit.json');
@@ -287,7 +288,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
   };
 }
 
-export function build() {
+function readDataset() {
   if (!existsSync(comparisonPath)) {
     throw new Error(`Canonical results not found at ${comparisonPath}`);
   }
@@ -295,12 +296,24 @@ export function build() {
   const neonAudit = JSON.parse(readFileSync(neonAuditPath, 'utf8'));
   const solAudit = JSON.parse(readFileSync(solAuditPath, 'utf8'));
 
-  const dataset = buildDataset(comparison, neonAudit, solAudit);
+  return buildDataset(comparison, neonAudit, solAudit);
+}
+
+export function checkSiteData() {
+  if (!existsSync(siteDataPath) || readFileSync(siteDataPath, 'utf8') !== JSON.stringify(readDataset())) {
+    throw new Error('Published dashboard data is missing or stale. Run node scripts/build-site.js and commit site/data/results.json.');
+  }
+  console.log('Published dashboard data matches canonical benchmark records.');
+}
+
+export function build() {
+  const dataset = readDataset();
+  mkdirSync(dirname(siteDataPath), { recursive: true });
+  writeFileSync(siteDataPath, JSON.stringify(dataset), 'utf8');
 
   rmSync(distDir, { recursive: true, force: true });
-  mkdirSync(resolve(distDir, 'data'), { recursive: true });
+  mkdirSync(distDir, { recursive: true });
   cpSync(siteDir, distDir, { recursive: true });
-  writeFileSync(resolve(distDir, 'data/results.json'), JSON.stringify(dataset), 'utf8');
 
   const summaryLine = dataset.runs
     .map(r => `${r.short_label}: ${r.metrics.solved}/10, PAR2 ${r.metrics.par2.toFixed(1)}, mean ${(r.metrics.cycle_mean_ms / 1000).toFixed(2)}s`)
@@ -310,5 +323,6 @@ export function build() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  build();
+  if (process.argv.includes('--check')) checkSiteData();
+  else build();
 }

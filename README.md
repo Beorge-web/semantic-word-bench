@@ -43,7 +43,9 @@ bun run build:site
 bun run preview:site
 ```
 
-`build:site` writes the generated static bundle and derived `data/results.json` to `dist/`, which is ignored by Git. `preview:site` rebuilds `dist/` and serves it at http://127.0.0.1:4173 (override with `PORT`).
+`build:site` refreshes the checked-in `site/data/results.json` from the canonical results and copies the complete site to `dist/` for local preview. `dist/` is ignored by Git. `preview:site` rebuilds `dist/` and serves it at http://127.0.0.1:4173 (override with `PORT`).
+
+After updating benchmark results, run the build and commit `site/data/results.json`. CI runs `bun scripts/build-site.js --check` and rejects missing or stale published data.
 
 ### Deploy on Vercel
 
@@ -51,8 +53,8 @@ Repository root includes `vercel.json` configured with:
 
 - Framework preset: Other (`"framework": null`)
 - Install command: skipped (`"installCommand": ""`), because the static site has no external dependencies
-- Build command: `node scripts/build-site.js`
-- Output directory: `dist`
+- Build command: skipped (`"buildCommand": ""`)
+- Output directory: `site`
 
 To deploy from GitHub:
 
@@ -62,7 +64,7 @@ To deploy from GitHub:
 
 [Deploy with Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FBeorge-web%2Fsemantic-word-bench)
 
-An empty `installCommand` [skips Vercel's dependency installation](https://vercel.com/docs/project-configuration/vercel-json#installcommand). The dashboard build uses only Node.js built-in modules and the files in this repository.
+Vercel publishes the checked-in HTML, CSS, JavaScript and chart data directly. It does not run Node.js, Bun or npm commands. Empty install and build commands [skip those steps](https://vercel.com/docs/builds/configure-a-build#skip-build-step). Node.js or Bun is only needed locally to refresh the chart data.
 
 ## Quick start
 
