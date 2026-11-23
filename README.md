@@ -1,114 +1,133 @@
 # Semantic Word Bench
 
-CLI-бенчмарк семантического поиска для языковых моделей. 10 русских и 10 английских скрытых заданий, по 50 000 допустимых слов на язык. Модель отправляет одно слово и получает его ранг. Ранг 1 означает победу.
+A CLI benchmark for semantic search with feedback. The suite contains 10 hidden Russian words and 10 hidden English words, with a fixed vocabulary of 50,000 accepted words per language. Submit one word and receive its rank. Rank 1 is the exact answer.
 
-Код написан на JavaScript и запускается через Bun. SQLite входит в Bun. Дополнительные пакеты, GPU и ключи API для оценки слов не требуются. Проверенная версия Bun: 1.4.2.
+Written in JavaScript and run with Bun. SQLite is built into Bun. Scoring uses frozen rank tables, so it requires no extra packages, GPU, or model API keys. Tested with Bun 1.4.2.
 
-## Запуск
+## Results
+
+English baseline, November 23, 2026. Each model attempted the same 10 English words once, with high reasoning effort, the default service tier, and a limit of 50 submissions per round. Each round used a fresh Codex agent context. The prompts explained the rules without suggesting a search strategy. There were no human interventions.
+
+| Model | Solved | PAR2, attempts | Mean interaction cycle | Median interaction cycle |
+| --- | ---: | ---: | ---: | ---: |
+| GPT-6.1 Sol high | 3/10 | 78.1 | 4.57 s | 4.38 s |
+| GPT-6.2 Sol high | 7/10 | 50.9 | 2.81 s | 2.57 s |
+
+PAR2 assigns 100 attempts to an unsolved round, then averages across all rounds. Lower is better. Timing is a separate measurement and does not affect PAR2. Interaction cycles are intervals between consecutive CLI results within a round, excluding its first result. They include model generation, agent work, and CLI startup. They are not provider TTFT.
+
+These results cover only the English subset. Russian rounds were not run and are excluded from the reported metrics. This is one trial on 10 selected words, not a general ranking of model intelligence.
+
+[Full report and methodology](results/2026-11-23-sol-high-en/README.md) · [CSV](results/2026-11-23-sol-high-en/rounds.csv) · [Raw results](results/2026-11-23-sol-high-en/comparison.json) · [Agent audit](results/2026-11-23-sol-high-en/audit.json)
+
+## Quick start
+
+Requires Bun 1.2.3 or newer.
 
 ```sh
-bun cli.js create --model "Gemini 4 Neon" --provider Antigravity --effort high
+bun cli.js create --model gpt-6.2-sol --provider Codex --effort high
 ```
 
-Команда создаст запуск с `track: "cli"` и вернёт `run_id`. Подставь его вместо `RUN_ID`:
+This creates a run with `track: "cli"` and returns its `run_id`. The model and provider fields label the run. Launch the model separately and give it the generated round prompt.
+
+Replace `RUN_ID` with the returned identifier:
 
 ```sh
-bun cli.js prompt RUN_ID ru-01
-bun cli.js guess RUN_ID ru-01 "слово"
+bun cli.js prompt RUN_ID en-01
+bun cli.js guess RUN_ID en-01 "word"
 ```
 
-Оператор копирует промпт в новый чат модели. В промпте есть команда с абсолютными путями к CLI и базе. Рабочая папка чата не влияет на выбор базы.
+Copy the prompt into a fresh model chat. It includes the guess command with absolute paths to the CLI and database, so the chat's working directory does not change which database it uses.
 
-Каждая попытка возвращает одну строку компактного JSON:
+Each submission returns one compact JSON line:
 
 ```json
-{"round":"ru-01","attempt":1,"word":"слово","rank":12345,"status":"active","remaining":49}
+{"round":"en-01","attempt":1,"word":"word","rank":12345,"status":"active","remaining":49}
 ```
 
-Ранг в примере условный. История и метрики не повторяются в каждом ответе. Поля `error` и `duplicate` появляются при соответствующем результате. Ошибка использования команды возвращает JSON в stderr и ненулевой код выхода.
+The example rank is illustrative. History and aggregate metrics are not repeated with every response. The `error` and `duplicate` fields appear when applicable. Command usage errors return JSON on stderr and a nonzero exit code. The CLI runs without a browser or HTTP server.
 
-Браузер и HTTP-сервер для CLI не запускаются.
-
-## Постоянный процесс
+## Persistent process
 
 ```sh
 bun cli.js play RUN_ID en-01
 ```
 
-`play` загружает данные один раз и читает слова из stdin. После начального статуса отправляй одно слово на строку и читай ответ перед следующей попыткой. Победа и исчерпание бюджета завершают процесс. `:quit` приостанавливает игру, `:giveup` сдаёт раунд. Конец stdin сохраняет прогресс. Пустая строка расходует попытку.
+`play` loads the data once and reads words from stdin. After the initial status, send one word per line and read its result before the next submission. A win or an exhausted budget ends the process. `:quit` pauses the game; `:giveup` abandons the round. End of input preserves progress. An empty line consumes an attempt.
 
-Режим подходит для агента с доступом к stdin длительного процесса. `guess` подходит для инструментов, запускающих отдельный процесс на каждый ход. При сравнении времени обе модели должны использовать одинаковый способ. Промпт по умолчанию задаёт `guess`.
+Use `play` with agents that can write to a persistent process. Use `guess` when each tool call starts a separate process. Both models must use the same interaction method for timing comparisons. Generated prompts use `guess` by default.
 
-## История и результаты
+## History and exports
 
 ```sh
-bun cli.js history RUN_ID ru-01
+bun cli.js history RUN_ID en-01
 bun cli.js summary RUN_ID
 bun cli.js export RUN_ID --out result.json
-bun cli.js abandon RUN_ID ru-01
+bun cli.js abandon RUN_ID en-01
 bun cli.js finish RUN_ID
-bun cli.js intervention RUN_ID --note "Оператор дал подсказку"
+bun cli.js intervention RUN_ID --note "Operator provided a hint"
 ```
 
-`history` показывает только выданный раунд. `summary` выводит метрики без истории. `export` сохраняет полный JSON. `finish` завершает оставшиеся задания как неудачи.
+`history` returns only the assigned round. `summary` returns metrics without the guess history. `export` saves the full JSON record. `finish` marks unfinished rounds as failed.
 
-База находится в `runs/benchmark.sqlite3` внутри проекта. Для отдельной базы укажи `--database PATH` у любой команды. Путь включается в промпт. Папка `runs/` исключена из Git.
+The database is stored at `runs/benchmark.sqlite3` inside the project. Pass `--database PATH` to any command to use another database. Generated prompts include that path. The `runs/` directory is excluded from Git.
 
-Для повторной отправки после сбоя используй `--request-id ID`. Повтор с тем же ID и словом не списывает новую попытку. Без этого флага каждый вызов `guess` является новой отправкой.
+Use `--request-id ID` to retry a submission after a process or transport failure. Repeating the same ID and word does not consume another attempt. Without this flag, each `guess` invocation is a new submission.
 
-## Правила эксперимента
+## Experiment protocol
 
-1. Каждой модели создай отдельный запуск. В нём 20 раундов с одинаковыми для всех участников ответами.
-2. Каждый раунд запускай в новом чате. Передавай только промпт этого раунда, без списка ответов и чужой истории.
-3. На раунд даётся 50 отправок. Неизвестное слово, неверный формат и повтор тоже расходуют попытку.
-4. После каждой попытки модель читает результат. Массовая отправка готового списка нарушает протокол.
-5. Подсказок нет. Помощь человека и смену настроек запиши как вмешательство.
-6. Для независимого повтора создай новый запуск с `--repetition 2`. Сохрани модель, агента, режим рассуждения и способ вызова CLI.
-7. Сравнивай завершённые запуски с одинаковыми `suite_fingerprint` и `protocol_fingerprint`.
+1. Create a separate run for each model. A run contains all 20 rounds, with the same answers for every participant.
+2. Start each round in a fresh chat. Give the model only that round's prompt, without answers or other rounds' histories.
+3. Allow 50 submissions per round. Unknown words, invalid formats, and repeated guesses also consume attempts.
+4. Read the result after each guess. Submitting a prepared batch of words violates the protocol.
+5. Provide no hints. Record human assistance and setting changes as interventions.
+6. Create a new run with `--repetition 2` for an independent repeat. Keep the model, agent, reasoning effort, and CLI interaction method fixed.
+7. Compare completed runs with matching `suite_fingerprint` and `protocol_fingerprint` values.
 
-Промпты в `prompts/` объясняют интерфейс, значение ранга и бюджет попыток. Стратегию выбора слов модель определяет сама. Это режим `baseline`, он записывается в `metadata.prompt_mode`. Версия протокола 3 использует эти правила. Старые результаты доступны для чтения, продолжать старый запуск с изменённым протоколом нельзя.
+The prompts in `prompts/` explain the interface, ranks, and attempt budget. The model chooses its own strategy. This is the `baseline` mode, recorded in `metadata.prompt_mode`. Protocol version 3 uses these rules. Older results remain readable, but a run cannot continue after its protocol changes.
 
-## Оценка
+For a language-only experiment, use the relevant `by_language.en` or `by_language.ru` metrics and state the scope. Pending rounds in the other language must not count as failures in that subset.
 
-Результаты сохраняются для русского, английского и всего набора. Главные показатели: доля разгаданных слов и PAR2 в попытках. PAR2 считает неразгаданный раунд как 100 попыток и усредняет результат по всем заданиям. Меньше лучше. Незавершённые задания тоже получают этот штраф в предварительной таблице.
+## Scoring and timing
 
-Среднее и медиана попыток среди побед выводятся рядом с долей побед. Неизвестные слова, повторы и вмешательства учитываются отдельными счётчиками.
+Metrics are available for Russian, English, and the complete suite. The primary measures are solve rate and PAR2 in attempts. PAR2 assigns 100 attempts to an unsolved round and averages over all tasks. Unfinished rounds receive the same penalty in provisional summaries.
 
-Время не входит в оценку качества. `cycle_ms` измеряет интервал между последовательными результатами одного раунда, включая размышление модели и работу агента. Первый результат исключён. В `guess` в цикл входит запуск следующего процесса и загрузка данных. В `play` процесс остаётся открытым. `service_ms` охватывает работу приложения до подготовки изменения состояния, без фиксации транзакции и печати ответа. Это не TTFT провайдера.
+Mean and median attempts among solved rounds are reported alongside solve rate. Unknown words, duplicates, and interventions have separate counters.
 
-## Данные и расстояния
+Time does not affect the quality score. `cycle_ms` measures the interval between consecutive results within a round, including model reasoning and agent work. The first result is excluded. With `guess`, the cycle includes starting the next process and loading its data. With `play`, the process stays open. `service_ms` measures application work up to preparing the state change, excluding transaction commit and response output. Neither measure is provider TTFT.
 
-Используется [ConceptNet Numberbatch 19.08](https://github.com/commonsense/conceptnet-numberbatch), файл `mini.h5`, векторы int8 размерности 300. Из пересечения с [wordfreq 3.1.1](https://github.com/rspeer/wordfreq) выбраны по 50 000 частых одиночных слов длиной от 2 до 30 букв. Ответы обязательно включены.
+## Data and semantic similarity
 
-Регистр игнорируется, Unicode приводится к NFC, русские ё и е объединяются. При наличии обеих записей используется первая в исходном файле. Лемматизации и векторов для неизвестных слов нет.
+The oracle uses [ConceptNet Numberbatch 19.08](https://github.com/commonsense/conceptnet-numberbatch), the `mini.h5` file with 300-dimensional int8 vectors. Each vocabulary contains 50,000 frequent single words from its intersection with [wordfreq 3.1.1](https://github.com/rspeer/wordfreq). Words have 2 to 30 letters. All target words are included.
+
+Input is case-insensitive and normalized to Unicode NFC. Russian `ё` is mapped to `е`. If both spellings occur in the source, the first entry is used. There is no lemmatization or vector generation for unknown words.
 
 ```text
 similarity(w, target) = dot(v_w, v_target) / (norm(v_w) * norm(v_target))
 ```
 
-Слова сортируются по убыванию косинусной близости. Значения округлены до шести знаков, равные значения упорядочены по алфавиту. Точный ответ всегда получает ранг 1. Ранг не является самим расстоянием, разность рангов не показывает величину смыслового различия.
+Words are ranked by descending cosine similarity. Values are rounded to six decimal places; ties use alphabetical order. The exact answer always receives rank 1. A rank is not a distance, and differences between ranks do not measure the size of a semantic difference.
 
-Готовые таблицы в `data/*.json.gz` при переходе на JavaScript не пересобирались. Контрольные суммы записаны в `data/manifest.json`. Отпечаток v1:
+The frozen tables in `data/*.json.gz` were preserved during the JavaScript migration. Their checksums are recorded in `data/manifest.json`. The v1 dataset fingerprint is:
 
 ```text
 c497f4347aa6cb3515e939da2d6b0b89dbd863a05508db4e63f5b061a125de51
 ```
 
-Для расчёта отпечатка переводы строк манифеста приводятся к CRLF. Это сохраняет первоначальный идентификатор v1 и делает его одинаковым на Windows и Linux.
+Manifest line endings are normalized to CRLF before hashing. This preserves the original v1 identifier across Windows and Linux.
 
-Первоначальный генератор сохранён в [коммите 1756c81](https://github.com/Beorge-web/semantic-word-bench/tree/1756c81476faffd91851a36e3121fdbdea4b27ef/tools). Для фиксированного набора пересборка не нужна. `tools/suite_targets.json` предназначен оператору.
+The original generator is preserved in [commit 1756c81](https://github.com/Beorge-web/semantic-word-bench/tree/1756c81476faffd91851a36e3121fdbdea4b27ef/tools). The fixed suite requires no rebuild. `tools/suite_targets.json` is operator-only material.
 
-## Ограничения
+## Limitations
 
-Это пилотный бенчмарк семантического поиска с обратной связью. Он не определяет общий интеллект и качество программирования. 20 заданий ещё не откалиброваны по участникам.
+This is a pilot benchmark of semantic search with feedback. It does not measure general intelligence or programming ability. The 20 tasks have not been calibrated against a participant population.
 
-Словарь ограничен, неизвестное слово не доказывает ошибку рассуждения. Одинаковое число слов не означает одинаковую сложность языков. Векторы смешивают значения многозначных слов и могут сближать антонимы.
+The vocabulary is limited, so an unknown word does not establish a reasoning error. Equal vocabulary sizes do not imply equal language difficulty. Word vectors mix senses of ambiguous words and can place antonyms close together.
 
-Модель должна исполнять CLI как инструмент, не читать проект и базу, не запрашивать другие раунды. Соблюдение правил обеспечивает оператор. Для строгой изоляции файловая система участника должна быть отделена от базы. Приватность репозитория сама по себе изоляции не создаёт.
+Participants must execute the CLI as a tool, without reading the project or database or inspecting other rounds. The operator is responsible for enforcing these rules. Strict isolation requires separating the participant's filesystem from the oracle data. A private repository alone does not provide that separation.
 
-Механика похожа на [guess-word.com](https://guess-word.com/), совпадение рейтингов не заявляется. Модель и формула оригинального сайта не подтверждены. [Semantle](https://semantle.com/faq/) использует GoogleNews word2vec, её оценки не смешиваются с этим набором.
+The mechanics resemble [guess-word.com](https://guess-word.com/), but matching its ranks is not claimed. The original site's model and server formula have not been confirmed. [Semantle](https://semantle.com/faq/) uses GoogleNews word2vec, and its scores are not mixed with this suite.
 
-## Проверки и необязательный веб-интерфейс
+## Checks and optional web interface
 
 ```sh
 bun cli.js check-data
@@ -116,10 +135,8 @@ bun test
 bun cli.js serve
 ```
 
-Тесты проверяют отпечаток, все ответы, бюджет, штрафы, SQLite, одновременные повторы, реальные CLI-процессы, Unicode, работу из другой папки и экспорт. Веб-интерфейс для ручного просмотра доступен на http://127.0.0.1:8765 после `serve`. Его движок тоже написан на JavaScript. Браузер и HTTP имеют отдельные значения `track`.
+Tests cover the dataset fingerprint, all answers, budgets, penalties, SQLite persistence, concurrent retries, real CLI processes, Unicode, different working directories, and exports. After `serve`, the optional web interface is available at http://127.0.0.1:8765. It uses the same JavaScript engine. Browser and HTTP runs have separate `track` values.
 
-Код распространяется по MIT. Производные данные в `data/` используют CC BY-SA 4.0. Источники и атрибуция указаны в [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## License
 
-## Выполненные прогоны
-
-[Английский baseline GPT-6.1 Sol high и GPT-6.2 Sol high, 23 ноября 2026](results/2026-11-23-sol-high-en/README.md). В папке сохранены отчёт, метрики, все попытки и аудит дочерних запусков.
+Code is licensed under MIT. Derived data in `data/` is licensed under CC BY-SA 4.0. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for sources and attribution.

@@ -1,20 +1,22 @@
-# English baseline, 23 ноября 2026
+# English baseline, November 23, 2026
 
-Один прогон 10 одинаковых английских заданий для GPT-6.1 Sol high и GPT-6.2 Sol high. Провайдер Codex-beorge, service tier default, протокол 3, CLI с отдельным процессом на каждую попытку. Каждый раунд выполнялся в новом дочернем чате. Вмешательств человека не было.
+One trial on the same 10 English tasks for GPT-6.1 Sol high and GPT-6.2 Sol high. Both used Codex-beorge, the default service tier, protocol version 3, and a separate CLI process for each submission. Every round ran in a fresh agent context. There were no human interventions.
 
-- GPT-6.1 Sol: 3 победы из 10, PAR2 78,1, средний цикл 4,57 с.
-- GPT-6.2 Sol: 7 побед из 10, PAR2 50,9, средний цикл 2,81 с.
+| Model | Solved | PAR2, attempts | Mean interaction cycle | Median interaction cycle |
+| --- | ---: | ---: | ---: | ---: |
+| GPT-6.1 Sol high | 3/10 | 78.1 | 4.57 s | 4.38 s |
+| GPT-6.2 Sol high | 7/10 | 50.9 | 2.81 s | 2.57 s |
 
-PAR2 считает неразгаданный раунд как 100 попыток. Время является отдельной метрикой. Цикл измерен между последовательными результатами одного раунда, первые ходы исключены. Это не TTFT.
+PAR2 assigns 100 attempts to an unsolved round, then averages across all tasks. Lower is better. Timing is separate. Interaction cycles are measured between consecutive results within a round, excluding the first result. They are not provider TTFT.
 
-## Файлы
+## Files
 
-- [report.html](report.html): самостоятельный отчёт с графиками и раскрываемыми результатами каждого слова.
-- [comparison.json](comparison.json): английские выгрузки обеих моделей, метрики и попарные результаты.
-- [rounds.csv](rounds.csv): таблица результатов по словам.
-- [gpt-6.1-sol.json](gpt-6.1-sol.json) и [gpt-6.2-sol.json](gpt-6.2-sol.json): попытки и временные отметки.
-- [audit.json](audit.json): проверенные модели и настройки, ссылки на журналы, число команд и время дочерних запусков.
+- [report.html](report.html): standalone report with charts and expandable results for each word.
+- [comparison.json](comparison.json): English records for both models, aggregate metrics, and paired task results.
+- [rounds.csv](rounds.csv): results by word.
+- [gpt-6.1-sol.json](gpt-6.1-sol.json) and [gpt-6.2-sol.json](gpt-6.2-sol.json): submissions and timestamps.
+- [audit.json](audit.json): verified models and settings, transcript links, command counts, and agent run times.
 
-Выгрузки содержат только английские раунды. Русские задания не запускались и не входят в метрики. Проверены все 20 дочерних журналов, в них 790 одиночных команд попыток. Обращений к исходникам, словарю или внешним источникам в этих журналах не обнаружено.
+Exports contain only English rounds. Russian tasks were not run and are excluded from the metrics. All 20 agent transcripts were reviewed. They contain 790 individual CLI submissions. No source, dictionary, or external-source access was found in those transcripts.
 
-Это наблюдение на десяти выбранных словах без независимых повторов. Оно не является общим рейтингом интеллекта моделей.
+This is one observation on 10 selected words without independent repeats. It is not a general ranking of model intelligence.
