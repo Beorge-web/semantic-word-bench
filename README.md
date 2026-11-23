@@ -1,12 +1,12 @@
 # Semantic Word Bench
 
-A CLI benchmark for semantic search with feedback. The suite contains 10 hidden Russian words and 10 hidden English words, with a fixed vocabulary of 50,000 accepted words per language. Submit one word and receive its rank. Rank 1 is the exact answer.
+A CLI benchmark for semantic search with feedback. The original suite contains 10 hidden Russian words and 10 hidden English words, with a fixed vocabulary of 50,000 accepted words per language. Submit one word and receive its rank. Rank 1 is the exact answer. Additional frozen task sets and embedding tracks are available separately.
 
 Written in JavaScript and run with Bun. SQLite is built into Bun. Scoring uses frozen rank tables, so it requires no extra packages, GPU, or model API keys. Tested with Bun 1.4.2.
 
 ## Results
 
-English baseline, November 23, 2026. Each model attempted the same 10 English words once, with a limit of 50 submissions per round. Sol used Codex with high reasoning effort and the default service tier. Neon used Antigravity GoogleMain with low or medium thought level. Each round used a fresh agent context. The prompts explained the rules without suggesting a search strategy. There were no human interventions.
+English baseline, November 2026. Each completed participant attempted the same 10 English words once, with a limit of 50 submissions per round. Sol and Astra used Codex with high reasoning effort and the default service tier. Neon used Antigravity GoogleMain with low or medium thought level. Each round used a fresh agent context. The prompts explained the rules without suggesting a search strategy. There were no human interventions. Participants shared a filesystem and their commands were audited.
 
 | Model | Solved | PAR2, attempts | Mean interaction cycle | Median interaction cycle |
 | --- | ---: | ---: | ---: | ---: |
@@ -14,6 +14,7 @@ English baseline, November 23, 2026. Each model attempted the same 10 English wo
 | GPT-6.2 Sol high | 7/10 | 50.9 | 2.81 s | 2.57 s |
 | Gemini 4 Neon low | 4/10 | 73.6 | 10.41 s | 7.43 s |
 | Gemini 4 Neon medium | 5/10 | 64.4 | 12.27 s | 10.52 s |
+| GPT-6.2 Astra high | 5/10 | 64.8 | 3.29 s | 2.78 s |
 
 PAR2 assigns 100 attempts to an unsolved round, then averages across all rounds. Lower is better. Timing is a separate measurement and does not affect PAR2. Interaction cycles are intervals between consecutive CLI results within a round, excluding its first result. They include model generation, agent work, and CLI startup. They are not provider TTFT.
 
@@ -29,8 +30,11 @@ Hit@k is a secondary proximity measure: the number of rounds where a guess reach
 | GPT-6.2 Sol high | 7/10 | 7/10 | 7/10 | 8/10 | 10/10 |
 | Gemini 4 Neon low | 4/10 | 4/10 | 4/10 | 4/10 | 6/10 |
 | Gemini 4 Neon medium | 5/10 | 5/10 | 5/10 | 6/10 | 8/10 |
+| GPT-6.2 Astra high | 5/10 | 5/10 | 5/10 | 6/10 | 10/10 |
 
-Hit@2 and Hit@10 add no near misses in this trial. Hit@100 includes one additional unsolved round for Sol 6.2 and Neon medium. The dashboard shows these thresholds separately from exact wins and compares attempts for each word.
+Hit@2 and Hit@10 add no near misses in these completed trials. Hit@100 includes one additional unsolved round for Sol 6.2, Neon medium and Astra 6.2. The dashboard shows these thresholds separately from exact wins and compares attempts for each word.
+
+[Astra results, raw events and audit](results/2026-11-24-astra-high-en/README.md) are separate source records and join the same Numberbatch v1 collection. The Astra 6 trial is still in progress and is excluded until all 10 English rounds finish.
 
 [Neon results and four-model comparison](results/2026-11-23-neon-en/README.md) · [CSV](results/2026-11-23-neon-en/rounds.csv) · [Raw comparison](results/2026-11-23-neon-en/comparison.json) · [Neon agent audit](results/2026-11-23-neon-en/audit.json)
 
@@ -38,7 +42,7 @@ Hit@2 and Hit@10 add no near misses in this trial. Hit@100 includes one addition
 
 ## Results dashboard
 
-A static results viewer in `site/` renders the canonical English pilot results from `results/2026-11-23-neon-en/comparison.json` and the checked-in audit records. It is a read-only static site with no backend, authentication, API keys, or live model calls. The optional interactive local game server in `web/` remains separate.
+A static results viewer in `site/` reads the collections declared in `results/catalog.json` and their checked-in audit records. Each collection keeps its own dataset, embedding track, language scope, prompt mode and interface. The dashboard includes exact wins, PAR2, top-k proximity, per-word attempts, interaction cycle distributions, checkpoint ranks, threshold steps, stagnation, repeats, raw and best-rank trajectories, solve durations and within-model effort comparisons. Tokens and costs appear only with measured coverage. The optional local game server in `web/` remains separate.
 
 Build and preview locally with Node or Bun:
 
@@ -54,9 +58,9 @@ bun run build:site
 bun run preview:site
 ```
 
-`build:site` refreshes the checked-in `site/data/results.json` from the canonical results and copies the complete site to `dist/` for local preview. `dist/` is ignored by Git. `preview:site` rebuilds `dist/` and serves it at http://127.0.0.1:4173 (override with `PORT`).
+`build:site` refreshes the checked-in `site/data/` catalog and collection JSON files from canonical results and copies the complete site to `dist/` for local preview. `dist/` is ignored by Git. `preview:site` rebuilds `dist/` and serves it at http://127.0.0.1:4173. Set `PORT` to change the port.
 
-After updating benchmark results, run the build and commit `site/data/results.json`. CI runs `bun scripts/build-site.js --check` and rejects missing or stale published data.
+After updating benchmark results, run the build and commit `site/data/`. CI runs `bun scripts/build-site.js --check` and rejects missing or stale published data.
 
 ### Deploy on Vercel
 
@@ -133,6 +137,8 @@ Use `--request-id ID` to retry a submission after a process or transport failure
 
 ## Experiment protocol
 
+For effort matrices, independent repetitions, human baselines, exports and a separate oracle machine, see [Running experiments](docs/experiments.md). `experiments/english-pilot.json` describes the published participant settings. `experiments/effort-matrix.json` is a configurable plan for future trials, not a claim that those trials ran. Each combination of model, provider, effort and service tier remains a separate participant. Provider effort names are not standardized compute units. A None baseline requires actual provider support; Low is never renamed None.
+
 1. Create a separate run for each model. A run contains all 20 rounds, with the same answers for every participant.
 2. Start each round in a fresh chat. Give the model only that round's prompt, without answers or other rounds' histories.
 3. Allow 50 submissions per round. Unknown words, invalid formats, and repeated guesses also consume attempts.
@@ -150,6 +156,8 @@ For a language-only experiment, use the relevant `by_language.en` or `by_languag
 Metrics are available for Russian, English, and the complete suite. The primary measures are solve rate and PAR2 in attempts. PAR2 assigns 100 attempts to an unsolved round and averages over all tasks. Unfinished rounds receive the same penalty in provisional summaries.
 
 Mean and median attempts among solved rounds are reported alongside solve rate. Unknown words, duplicates, and interventions have separate counters.
+
+[Search metric definitions](docs/search-metrics.md) cover best rank at attempts 10, 25 and 50, steps to top 100 and top 10, longest stagnation, repeat rate, full-round duration and time to solve. The dashboard exposes raw guess ranks alongside best-so-far curves. It preserves missing ranks and distinguishes observed play time from durations supported by agent timestamps. Token usage and task cost remain unavailable when the provider exposes no telemetry.
 
 Time does not affect the quality score. `cycle_ms` measures the interval between consecutive results within a round, including model reasoning and agent work. The first result is excluded. With `guess`, the cycle includes starting the next process and loading its data. With `play`, the process stays open. `service_ms` measures application work up to preparing the state change, excluding transaction commit and response output. Neither measure is provider TTFT.
 
@@ -175,6 +183,10 @@ Manifest line endings are normalized to CRLF before hashing. This preserves the 
 
 The original generator is preserved in [commit 1756c81](https://github.com/Beorge-web/semantic-word-bench/tree/1756c81476faffd91851a36e3121fdbdea4b27ef/tools). The fixed suite requires no rebuild. `tools/suite_targets.json` is operator-only material.
 
+[Datasets and embedding tracks](docs/datasets.md) documents the Node generators, source checksums, deterministic target sampling, Word2Vec binary and GloVe/text imports, precomputed JSON vectors and local BGE/E5-style embedding generation. Optional model dependencies stay in their own tools directories. Playing any frozen dataset requires no model weights or downloads.
+
+Two additional packs are committed. `datasets/numberbatch-20261124/` contains 10 new Russian and 10 new English targets. `datasets/bge-small-en-v1/` contains the original 10 English targets in a pinned BGE semantic space, with the same 50,000-word vocabulary. Neither pack has completed model trials. Use `--suite DIRECTORY` to select one. Different frozen datasets have separate fingerprints and leaderboard collections.
+
 ## Limitations
 
 This is a pilot benchmark of semantic search with feedback. It does not measure general intelligence or programming ability. The 20 tasks have not been calibrated against a participant population.
@@ -197,4 +209,4 @@ Tests cover the dataset fingerprint, all answers, budgets, penalties, SQLite per
 
 ## License
 
-Code is licensed under MIT. Derived data in `data/` is licensed under CC BY-SA 4.0. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for sources and attribution.
+Code is licensed under MIT. Derived data in `data/` and the committed `datasets/` packs is licensed under CC BY-SA 4.0. Embedding model licenses are identified separately in their manifests. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for sources and attribution.

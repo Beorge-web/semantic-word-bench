@@ -1,0 +1,56 @@
+{
+  "id": "numberbatch-19.08-pilot-20261124",
+  "version": 1,
+  "track": "numberbatch-19.08",
+  "max_guesses": 50,
+  "embedding": "ConceptNet Numberbatch 19.08 mini, int8, 300 dimensions",
+  "source_url": "https://conceptnet.s3.amazonaws.com/precomputed-data/2016/numberbatch/19.08/mini.h5",
+  "source_sha256": "15cff2f04a8987b2e8dfbcec76faf7275a95104dbd8ea7b4c428053a095513ad",
+  "license": "CC-BY-SA-4.0",
+  "vocabulary_source": "semantic-word-bench-v1",
+  "vocabulary_license": null,
+  "vector_bank_sha256": "7b6c57fbffd873c457001458aa648c07e0c95521fa867ed3ae9c5e6f5909e9e2",
+  "generator": "semantic-suite-js-v1",
+  "target_selection": "seeded-uniform-4-to-20-letters",
+  "seed": "20261124",
+  "languages": {
+    "ru": {
+      "file": "ru.json.gz",
+      "sha256": "6349882612eaa495ee6cf0e18cfc1ef4aa4ddd512770130ebb85c72fe67f98b1",
+      "vocabulary_size": 50000,
+      "rounds": [
+        "ru-01",
+        "ru-02",
+        "ru-03",
+        "ru-04",
+        "ru-05",
+        "ru-06",
+        "ru-07",
+        "ru-08",
+        "ru-09",
+        "ru-10"
+      ]
+    },
+    "en": {
+      "file": "en.json.gz",
+      "sha256": "4034a6527d6de8b511e0030e2d7948b406561e854035ad8005ee378a0140dac0",
+      "vocabulary_size": 50000,
+      "rounds": [
+        "en-01",
+        "en-02",
+        "en-03",
+        "en-04",
+        "en-05",
+        "en-06",
+        "en-07",
+        "en-08",
+        "en-09",
+        "en-10"
+      ]
+    }
+  },
+  "embedding_license": "CC-BY-SA-4.0",
+  "embedding_parameters": {
+    "dtype": "int8"
+  }
+}

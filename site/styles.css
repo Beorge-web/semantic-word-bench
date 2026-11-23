@@ -154,6 +154,37 @@ h1 {
   font-size: 15px;
 }
 
+.dataset-selector {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+  max-width: 480px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.dataset-selector select {
+  max-width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+}
+
+.effort-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 150px;
+}
+
+.effort-bar-row > .attempt-track {
+  display: block;
+  min-width: 60px;
+}
+
 .meta-strip {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -292,7 +323,7 @@ h1 {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -1002,7 +1033,8 @@ h1 {
   border-color: var(--border-strong);
 }
 
-.log-tab[aria-selected='true'] {
+.log-tab[aria-selected='true'],
+.log-tab[aria-pressed='true'] {
   color: var(--text);
   border-color: var(--model-color, var(--accent));
   background: color-mix(in srgb, var(--model-color, #3fd1a5) 14%, var(--bg-elevated));

@@ -1,0 +1,12 @@
+{
+  "default": "numberbatch-v1-en",
+  "collections": [
+    {
+      "id": "numberbatch-v1-en",
+      "track": "numberbatch-19.08",
+      "title": "Numberbatch v1 · English pilot",
+      "comparisons": ["results/2026-11-23-neon-en/comparison.json", "results/2026-11-24-astra-high-en/comparison.json"],
+      "audits": ["results/2026-11-23-neon-en/audit.json", "results/2026-11-23-sol-high-en/audit.json", "results/2026-11-24-astra-high-en/audit.json"]
+    }
+  ]
+}

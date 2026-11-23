@@ -1,0 +1,11 @@
+model,effort,round,answer,status,attempts,best_rank,best_rank_at_10,best_rank_at_25,best_rank_at_50,steps_to_top_100,steps_to_top_10,longest_stagnation,repeat_rate,observed_duration_ms,time_to_solve_ms,solve_time_basis
+gpt-6.2-astra,high,en-01,lantern,solved,38,1,1453,313,1,27,33,11,0,98673,112293,agent_start_to_winning_result
+gpt-6.2-astra,high,en-02,volcano,solved,37,1,11448,2180,1,35,37,9,0,114604,126236,agent_start_to_winning_result
+gpt-6.2-astra,high,en-03,needle,exhausted,50,633,3046,1299,633,,,20,0,174466,,
+gpt-6.2-astra,high,en-04,harvest,solved,48,1,6931,132,1,27,47,16,0,137390,147033,agent_start_to_winning_result
+gpt-6.2-astra,high,en-05,library,exhausted,50,783,4492,912,783,,,18,0,128847,,
+gpt-6.2-astra,high,en-06,justice,exhausted,50,137,702,364,137,,,26,0,253117,,
+gpt-6.2-astra,high,en-07,curiosity,solved,16,1,439,1,1,12,16,3,0,48977,59139,agent_start_to_winning_result
+gpt-6.2-astra,high,en-08,permission,exhausted,50,719,2707,2173,719,,,31,0,127983,,
+gpt-6.2-astra,high,en-09,loyalty,exhausted,50,17,5559,4527,17,42,,16,0,167956,,
+gpt-6.2-astra,high,en-10,pattern,solved,9,1,1,1,1,9,9,2,0,26448,38021,agent_start_to_winning_result

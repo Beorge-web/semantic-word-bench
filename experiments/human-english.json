@@ -1,0 +1,9 @@
+{
+  "id": "human-numberbatch-v1-en",
+  "suite": "data",
+  "scope": "en",
+  "repetitions": 1,
+  "participants": [
+    { "model": "human-anonymous-01", "provider": "human", "participant_type": "human", "efforts": ["none"], "supported_efforts": ["none"] }
+  ]
+}

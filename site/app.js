@@ -24,6 +24,10 @@ const state = {
   focusedIds: new Set(),
   selectedWordId: null,
   selectedRunId: null,
+  trajectoryMode: 'best',
+  collections: [],
+  effortGroup: null,
+  effortMetric: 'solve_rate',
 };
 
 function keepFocus(update) {
@@ -60,19 +64,25 @@ function toggleFocus(runId) {
 }
 
 function renderMetadata(data) {
-  el('meta-scope').textContent = `${data.words.length} English words (Russian not run)`;
+  const language = data.scope === 'ru' ? 'Russian' : data.scope === 'en' ? 'English' : 'Russian and English';
+  el('meta-scope').textContent = `${data.words.length} ${language} words`;
   el('meta-budget').textContent = `${data.max_guesses} guesses / round`;
-  el('meta-vocab').textContent = `${formatInt(data.vocabulary_size)} words`;
-  el('meta-repeats').textContent = `${data.repeats} trial / model`;
+  const vocabularies = Object.entries(data.vocabulary_sizes ?? {});
+  el('meta-vocab').textContent = new Set(vocabularies.map(([, size]) => size)).size > 1 ? vocabularies.map(([language, size]) => `${language.toUpperCase()} ${formatInt(size)}`).join(' / ') : `${formatInt(data.vocabulary_size)} words`;
+  el('meta-repeats').textContent = `${data.runs.length} recorded runs`;
   el('meta-date').textContent = formatDateUtc(data.completed_at);
+  el('experiment-description').textContent = `${data.runs.length} completed participant runs on ${data.words.length} ${language} words. ${data.collection_title ?? data.suite_id}. Quality and interaction speed are reported separately.`;
 
   el('fp-suite-id').textContent = data.suite_id;
   el('fp-dataset').textContent = data.suite_fingerprint;
   el('fp-protocol').textContent = data.protocol_fingerprint;
+  el('canonical-sources').innerHTML = (data.generated_from ?? []).map(path => `<a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/${escapeHtml(path)}" target="_blank" rel="noreferrer">${escapeHtml(path)}</a>`).join('<br>');
+  el('scoring-note').textContent = `PAR2 assigns ${data.par2_penalty} attempts to each unsolved round, then averages across all ${data.words.length} words. Lower is better.`;
+  el('tasks-note').textContent = `${data.words.length} tasks, ${data.max_guesses}-guess limit each`;
 
   if (data.audit) {
     el('audit-summary-text').textContent =
-      `All ${formatInt(data.audit.total_commands)} CLI submissions (${formatInt(data.audit.sol_commands)} Sol and ${formatInt(data.audit.neon_commands)} Neon) were audited with ${data.audit.unexpected_commands} unexpected commands and ${data.audit.interventions} human interventions. Every recorded rank matches the frozen tables.`;
+      `Audit records cover ${data.audit.audited_rounds}/${data.audit.total_rounds} rounds and report ${formatInt(data.audit.total_commands)} tool commands, ${data.audit.unexpected_commands} unexpected commands and ${data.audit.interventions} human interventions. Per-participant audit evidence is available with the source results.`;
   }
 }
 
@@ -238,6 +248,59 @@ function renderSpeedSection(data) {
     .join('');
 }
 
+function renderSearchSection(data) {
+  const stepText = (search, k) => {
+    const step = search.steps_to_top[k];
+    return `${step.reached}/${step.total} reached<br><span class="table-sub">${step.median === null ? 'not reached' : `median ${formatNumber(step.median, 1)} attempts`}</span>`;
+  };
+  el('search-table-body').innerHTML = data.runs.map(run => {
+    const search = run.search;
+    return `<tr class="${isRunActive(run.id, state.focusedIds) ? '' : 'is-dimmed'}">
+      <th scope="row">${escapeHtml(run.short_label)}</th>
+      ${[10, 25, 50].map(n => `<td class="num">${formatRank(search.best_rank_median_at[n])}<br><span class="table-sub">${search.checkpoint_scored_rounds[n]}/${search.rounds} scored</span></td>`).join('')}
+      <td>${stepText(search, 100)}</td><td>${stepText(search, 10)}</td>
+      <td class="num">${formatNumber(search.longest_stagnation_median, 1)}</td>
+      <td class="num">${formatNumber(search.repeat_rate * 100, 1)}%</td>
+    </tr>`;
+  }).join('');
+  const timeText = time => time.rounds ? `${formatSeconds(time.mean_ms, 1)}<br><span class="table-sub">${time.rounds} solved rounds</span>` : 'not available';
+  el('duration-table-body').innerHTML = data.runs.map(run => `<tr>
+    <th scope="row">${escapeHtml(run.short_label)}</th>
+    <td class="num">${formatSeconds(run.search.observed_duration_mean_ms, 1)}</td>
+    <td class="num">${formatSeconds(run.search.agent_duration_mean_ms, 1)}<br><span class="table-sub">${run.search.agent_timing_rounds}/${run.search.rounds} rounds</span></td>
+    <td>${timeText(run.search.solve_time_by_basis.agent_start_to_winning_result)}</td>
+    <td>${timeText(run.search.solve_time_by_basis.first_submission_to_winning_result)}</td>
+  </tr>`).join('');
+  const measured = data.runs.filter(run => run.search.resources.token_rounds || run.search.resources.cost_rounds);
+  el('resource-status').textContent = measured.length
+    ? `${measured.length} participants have measured resource records. Counts below include coverage and retain original currencies.`
+    : 'Per-run token usage and task cost were not exposed by the providers. They are unavailable, not zero. Subscription prices are not converted into estimated task costs.';
+  el('resource-records').hidden = measured.length === 0;
+  el('resource-table-body').innerHTML = measured.map(run => {
+    const resources = run.search.resources;
+    const tokens = resources.token_totals ?? {};
+    const costs = Object.entries(resources.cost_by_currency ?? {}).map(([currency, amount]) => `${formatNumber(amount, 4)} ${escapeHtml(currency)}`).join(', ') || 'not available';
+    return `<tr><th scope="row">${escapeHtml(run.short_label)}</th>
+      ${['input_tokens', 'cached_input_tokens', 'output_tokens', 'reasoning_tokens', 'total_tokens'].map(key => `<td class="num">${formatInt(tokens[key])}<br><span class="table-sub">${resources.token_field_coverage[key] ?? 0}/${resources.total_rounds} rounds</span></td>`).join('')}
+      <td>${costs}<br><span class="table-sub">${resources.cost_rounds}/${resources.total_rounds} rounds</span></td></tr>`;
+  }).join('');
+}
+
+function renderEffortSection(data) {
+  const groups = data.effort_comparisons ?? [];
+  const eligible = groups.filter(group => group.efforts.length > 1);
+  const group = eligible.find(group => group.id === state.effortGroup) ?? eligible[0];
+  state.effortGroup = group?.id ?? null;
+  el('effort-select').innerHTML = groups.map(entry => `<option value="${escapeHtml(entry.id)}" ${entry.id === state.effortGroup ? 'selected' : ''} ${entry.efforts.length < 2 ? 'disabled' : ''}>${escapeHtml(entry.label)}${entry.efforts.length < 2 ? ' (one setting recorded)' : ''}</option>`).join('');
+  el('effort-controls').hidden = !group;
+  el('effort-empty').hidden = Boolean(group);
+  document.querySelectorAll('[data-effort-metric]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.effortMetric === state.effortMetric)));
+  if (!group) { el('chart-effort').innerHTML = ''; return; }
+  const maximum = state.effortMetric === 'solve_rate' ? 1 : state.effortMetric === 'par2' ? data.par2_penalty : Math.max(...group.efforts.map(entry => entry.cycle_mean_ms ?? 0), 1);
+  const valueText = entry => state.effortMetric === 'solve_rate' ? `${formatNumber(entry.solve_rate * 100, 1)}%` : state.effortMetric === 'par2' ? formatNumber(entry.par2, 1) : formatSeconds(entry.cycle_mean_ms);
+  el('chart-effort').innerHTML = `<table class="data-table"><thead><tr><th>Effort</th><th>${state.effortMetric === 'solve_rate' ? 'Solve rate, higher is better' : state.effortMetric === 'par2' ? 'PAR2, lower is better' : 'Mean interaction cycle, lower is better'}</th><th>Trials</th><th>Rounds</th></tr></thead><tbody>${group.efforts.map(entry => `<tr><th scope="row">${escapeHtml(entry.effort)}</th><td><span class="effort-bar-row"><span class="attempt-track" aria-hidden="true"><span class="attempt-fill" style="--model-color:var(--accent);width:${(entry[state.effortMetric] ?? 0) / maximum * 100}%"></span></span><span>${valueText(entry)}</span></span></td><td>${entry.runs}</td><td>${entry.rounds}</td></tr>`).join('')}</tbody></table>`;
+}
+
 function renderMatrix(data) {
   el('matrix-head').innerHTML = `
     <tr>
@@ -325,7 +388,7 @@ function renderInspector(data) {
   el('inspector-heading').textContent = `${word.id}: ${word.answer}`;
   el('inspector-summary').textContent =
     word.solved_by === 0
-      ? 'Not solved by any participant within 50 guesses.'
+      ? `Not solved by any participant within ${data.max_guesses} guesses.`
       : `Solved by ${word.solved_by} of ${data.runs.length} participants.`;
 
   el('word-switcher').innerHTML = data.words
@@ -346,8 +409,11 @@ function renderInspector(data) {
     word.id,
     state.focusedIds,
     data.max_guesses,
-    data.vocabulary_size
+    round.vocabulary_size ?? data.vocabulary_size,
+    state.trajectoryMode
   );
+  el('trajectory-heading').textContent = state.trajectoryMode === 'best' ? 'Best rank so far' : 'Rank of every guess';
+  document.querySelectorAll('[data-trajectory-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.trajectoryMode === state.trajectoryMode)));
 
   el('log-model-tabs').innerHTML = data.runs
     .map(r => {
@@ -405,12 +471,26 @@ function renderAll() {
   renderSummaryCards(data);
   renderQualitySection(data);
   renderSpeedSection(data);
+  renderSearchSection(data);
+  renderEffortSection(data);
   renderMatrix(data);
   renderInspector(data);
 }
 
 function bindEvents() {
   document.addEventListener('click', event => {
+    const effortBtn = event.target.closest('[data-effort-metric]');
+    if (effortBtn) {
+      state.effortMetric = effortBtn.dataset.effortMetric;
+      renderEffortSection(state.data);
+      return;
+    }
+    const modeBtn = event.target.closest('[data-trajectory-mode]');
+    if (modeBtn) {
+      state.trajectoryMode = modeBtn.dataset.trajectoryMode;
+      renderInspector(state.data);
+      return;
+    }
     const focusBtn = event.target.closest('[data-focus-run]');
     if (focusBtn) {
       keepFocus(() => toggleFocus(focusBtn.dataset.focusRun));
@@ -441,6 +521,15 @@ function bindEvents() {
     state.focusedIds.clear();
     renderAll();
   });
+  el('effort-select').addEventListener('change', event => {
+    state.effortGroup = event.target.value;
+    renderEffortSection(state.data);
+  });
+  el('dataset-select').addEventListener('change', async event => {
+    const entry = state.collections.find(entry => entry.id === event.target.value);
+    if (!entry) return;
+    try { await loadDataset(entry.file); } catch (error) { showStatus(`Unable to load the selected dataset: ${error.message}`, true); }
+  });
 
   el('log-model-tabs').addEventListener('keydown', event => {
     const tabs = [...el('log-model-tabs').querySelectorAll('[role="tab"]')];
@@ -462,10 +551,9 @@ function bindEvents() {
   });
 }
 
-async function init() {
-  bindEvents();
-  try {
-    const response = await fetch('./data/results.json', { cache: 'no-cache', headers: { accept: 'application/json' } });
+async function loadDataset(file) {
+    if (!/^[a-z0-9][a-z0-9.-]*\.json$/.test(file)) throw new Error('Invalid dataset file');
+    const response = await fetch(`./data/${file}`, { cache: 'no-cache', headers: { accept: 'application/json' } });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} while loading canonical results.`);
     }
@@ -477,6 +565,8 @@ async function init() {
     }
 
     state.data = payload;
+    state.focusedIds.clear();
+    state.effortGroup = null;
     state.selectedWordId = payload.words[0].id;
     state.selectedRunId = payload.runs[1]?.id || payload.runs[0].id;
 
@@ -484,6 +574,19 @@ async function init() {
     renderAll();
     el('status-region').hidden = true;
     el('dashboard').hidden = false;
+}
+
+async function init() {
+  bindEvents();
+  try {
+    const response = await fetch('./data/catalog.json', { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`HTTP ${response.status} while loading the dataset catalog.`);
+    const catalog = await response.json();
+    state.collections = catalog.collections;
+    const selected = state.collections.find(entry => entry.id === catalog.default);
+    if (!selected) throw new Error('The default dataset is not in the catalog.');
+    el('dataset-select').innerHTML = state.collections.map(entry => `<option value="${escapeHtml(entry.id)}" ${entry.id === selected.id ? 'selected' : ''}>${escapeHtml(entry.title)}</option>`).join('');
+    await loadDataset(selected.file);
   } catch (error) {
     showStatus(`Unable to load benchmark results: ${error instanceof Error ? error.message : String(error)}`, true);
   }

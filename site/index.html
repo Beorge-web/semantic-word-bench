@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Semantic Word Bench - English Pilot Results</title>
-  <meta name="description" content="Public static results viewer for the Semantic Word Bench English pilot comparing GPT-6.1 Sol high, GPT-6.2 Sol high, Gemini 4 Neon low, and Gemini 4 Neon medium.">
+  <title>Semantic Word Bench results</title>
+  <meta name="description" content="Recorded semantic word search results, with separate quality, trajectory and interaction speed measurements.">
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,25 +18,25 @@
   <div class="page">
     <header class="site-header">
       <div class="header-top">
-        <p class="eyebrow">SEMANTIC WORD BENCH / ENGLISH PILOT</p>
+        <p class="eyebrow">SEMANTIC WORD BENCH / RECORDED RESULTS</p>
         <nav class="header-links" aria-label="Repository links">
           <a href="https://github.com/Beorge-web/semantic-word-bench" target="_blank" rel="noreferrer">Repository</a>
-          <a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/results/2026-11-23-neon-en/comparison.json" target="_blank" rel="noreferrer">Raw JSON</a>
-          <a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/results/2026-11-23-neon-en/rounds.csv" target="_blank" rel="noreferrer">CSV</a>
+          <a href="https://github.com/Beorge-web/semantic-word-bench/tree/main/results" target="_blank" rel="noreferrer">Source records and CSV</a>
         </nav>
       </div>
       <h1>Semantic search benchmark results</h1>
-      <p class="subtitle">
-        Four completed English baseline runs on 10 hidden words with frozen ConceptNet Numberbatch ranks.
+      <p class="subtitle" id="experiment-description">
+        Completed baseline runs on a frozen semantic word-search task set.
         Quality (solved words and PAR2) and interaction speed are reported separately.
       </p>
       <dl class="meta-strip" id="meta-strip" aria-label="Experiment scope">
         <div><dt>Scope</dt><dd id="meta-scope">10 English words (Russian not run)</dd></div>
         <div><dt>Budget</dt><dd id="meta-budget">50 guesses / round</dd></div>
         <div><dt>Vocabulary</dt><dd id="meta-vocab">50,000 words</dd></div>
-        <div><dt>Repeats</dt><dd id="meta-repeats">1 trial / model</dd></div>
+        <div><dt>Runs</dt><dd id="meta-repeats">Loading...</dd></div>
         <div><dt>Recorded</dt><dd id="meta-date">Nov 23, 2026</dd></div>
       </dl>
+      <label class="dataset-selector">Dataset and embedding track<select id="dataset-select" aria-label="Dataset and embedding track"></select></label>
     </header>
 
     <main id="main-content" tabindex="-1">
@@ -66,8 +66,8 @@
               <h2 id="quality-heading">Solve rate and PAR2 attempts</h2>
             </div>
             <p class="section-note">
-              PAR2 assigns 100 attempts to each unsolved round, then averages across all 10 words.
-              Lower PAR2 is better. Timing does not affect quality scores.
+              <span id="scoring-note">PAR2 averages solved attempts and failure penalties across the selected tasks.</span>
+              Timing does not affect quality scores.
             </p>
           </div>
 
@@ -75,7 +75,7 @@
             <article class="panel">
               <div class="panel-head">
                 <h3>PAR2 attempts</h3>
-                <span class="panel-meta">Lower is better (100 = failure penalty)</span>
+                <span class="panel-meta">Lower is better</span>
               </div>
               <div class="chart-box" id="chart-par2"></div>
             </article>
@@ -83,7 +83,7 @@
             <article class="panel">
               <div class="panel-head">
                 <h3>Words solved by task</h3>
-                <span class="panel-meta">10 English tasks, 50-guess limit each</span>
+                <span class="panel-meta" id="tasks-note">Task count and attempt budget load with the collection.</span>
               </div>
               <div class="chart-box" id="chart-solved"></div>
             </article>
@@ -107,7 +107,7 @@
               <thead><tr><th scope="col">Model</th><th scope="col" class="num">Exact</th><th scope="col" class="num">Top 2</th><th scope="col" class="num">Top 10</th><th scope="col" class="num">Top 100</th><th scope="col" class="num">Top 1,000</th></tr></thead>
               <tbody id="proximity-table-body"></tbody>
             </table></div>
-            <p class="panel-footnote">Hit@k counts rounds where the best guess reached rank k or better, including exact wins. A nearby guess is not an exact answer. These counts do not change the solve rate or PAR2. Top 2 and top 10 add no near misses in this pilot.</p>
+            <p class="panel-footnote">Hit@k counts rounds where the best guess reached rank k or better, including exact wins. A nearby guess is not an exact answer. These counts do not change the solve rate or PAR2.</p>
           </article>
 
           <article class="panel panel-wide">
@@ -150,8 +150,8 @@
 
           <div class="callout-strip" role="note">
             <strong>Comparison caveat:</strong>
-            Sol runs used Codex and Neon runs used Antigravity GoogleMain at different times.
-            These timings measure each full model-and-agent system under those conditions rather than isolated inference latency.
+            Sol and Astra runs used Codex. Neon runs used Antigravity GoogleMain at different times.
+            These timings measure each full model-and-agent system under those conditions. Machine workload was not controlled.
           </div>
 
           <article class="panel panel-wide">
@@ -193,6 +193,29 @@
           </article>
         </section>
 
+        <section class="section" id="search-section" aria-labelledby="search-heading">
+          <div class="section-head"><div><p class="section-kicker">SEARCH TRAJECTORY</p><h2 id="search-heading">Progress, stagnation and resource use</h2></div>
+            <p class="section-note">Checkpoint ranks are medians across scored rounds. Threshold steps include only rounds that reached the threshold.</p>
+          </div>
+          <article class="panel"><div class="table-wrap"><table class="data-table">
+            <thead><tr><th>Model</th><th>Best rank @10</th><th>Best rank @25</th><th>Best rank @50</th><th>Steps to top 100</th><th>Steps to top 10</th><th>Median longest stagnation</th><th>Repeat rate</th></tr></thead>
+            <tbody id="search-table-body"></tbody>
+          </table></div><p class="panel-footnote">An early win stays at rank 1 at later checkpoints. Unobserved checkpoints stay missing. Stagnation counts consecutive submissions without a strict best-rank improvement, including ties and invalid guesses.</p></article>
+          <article class="panel panel-wide"><div class="panel-head"><h3>Round duration and time to solve</h3></div><div class="table-wrap"><table class="data-table">
+            <thead><tr><th>Model</th><th>Mean observed play duration</th><th>Mean full agent duration</th><th>Mean agent start to win</th><th>Mean first submission to win</th></tr></thead><tbody id="duration-table-body"></tbody>
+          </table></div><p class="panel-footnote">Observed play excludes thinking before the first submission. Agent timing is used only when the audit covers the complete round. The two solve-time bases remain separate. Unsolved rounds have no time to solve.</p></article>
+          <article class="panel panel-wide"><h3>Tokens and cost</h3><p class="panel-footnote" id="resource-status"></p>
+            <div id="resource-records" class="table-wrap" hidden><table class="data-table"><thead><tr><th>Model</th><th>Input tokens</th><th>Cached input tokens</th><th>Output tokens</th><th>Reasoning tokens</th><th>Total tokens</th><th>Measured cost</th></tr></thead><tbody id="resource-table-body"></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="section" id="effort-section" aria-labelledby="effort-heading">
+          <div class="section-head"><div><p class="section-kicker">REASONING EFFORT</p><h2 id="effort-heading">Within-model effort comparison</h2></div><p class="section-note">Compares settings within one model, provider, service tier and interface on this task set. Effort names are provider labels, not standardized units of computation.</p></div>
+          <article class="panel"><div id="effort-controls" class="panel-head"><label class="dataset-selector">Model and provider<select id="effort-select"></select></label><div class="tab-group" role="group" aria-label="Effort comparison metric">
+            <button type="button" class="log-tab" data-effort-metric="solve_rate" aria-pressed="true">Solve rate</button><button type="button" class="log-tab" data-effort-metric="par2" aria-pressed="false">PAR2</button><button type="button" class="log-tab" data-effort-metric="cycle_mean_ms" aria-pressed="false">Mean cycle</button>
+          </div></div><p class="panel-footnote" id="effort-empty" hidden>At least two effort settings from the same model and provider are required. Unmeasured settings have no score.</p><div class="table-wrap" id="chart-effort"></div><p class="panel-footnote">Repeated trials are weighted by round count for quality and cycle count for mean cycle duration. Dates and provider conditions can still differ.</p></article>
+        </section>
+
         <section class="section" id="words-section" aria-labelledby="words-heading">
           <div class="section-head">
             <div>
@@ -206,11 +229,11 @@
 
           <article class="panel panel-wide">
             <div class="panel-head">
-              <h3>Results by English task</h3>
+              <h3>Results by task</h3>
               <span class="panel-meta">Attempts used and best rank achieved (rank 1 = exact answer)</span>
             </div>
             <div class="table-wrap">
-              <table class="matrix-table" aria-label="Per-word comparison across all four models">
+              <table class="matrix-table" aria-label="Per-word comparison across participants">
                 <thead id="matrix-head"></thead>
                 <tbody id="matrix-body"></tbody>
               </table>
@@ -229,9 +252,14 @@
 
             <div class="inspector-chart-block">
               <div class="subhead">
-                <h4>Best rank convergence (log scale, rank 50,000 to 1)</h4>
+                <h4 id="trajectory-heading">Best rank so far</h4>
                 <span class="panel-meta">Higher is closer to the target word (top line = rank 1 solved)</span>
               </div>
+              <div class="tab-group" role="group" aria-label="Rank trajectory display">
+                <button type="button" class="log-tab" data-trajectory-mode="best" aria-pressed="true">Best so far</button>
+                <button type="button" class="log-tab" data-trajectory-mode="raw" aria-pressed="false">Every guess</button>
+              </div>
+              <p class="panel-footnote">The rank axis is logarithmic. Missing ranks create gaps. Best-so-far can only improve; every-guess shows unsuccessful probes as well.</p>
               <div class="chart-box" id="chart-trajectory"></div>
             </div>
 
@@ -277,11 +305,11 @@
             <article class="panel method-card">
               <h3>Benchmark and scoring</h3>
               <p>
-                Each round hides one English target word inside a frozen 50,000-word vocabulary ranked by cosine similarity on ConceptNet Numberbatch 19.08 int8 vectors.
-                Rank 1 is the exact answer. Unknown words, invalid formats, and duplicates all consume attempts from the 50-guess budget.
+                Each round hides one target word inside the collection's frozen vocabulary and semantic rank tables.
+                Rank 1 is the exact answer. Unknown words, invalid formats, and duplicates all consume attempts.
               </p>
               <p>
-                Primary quality metrics are solved count out of 10 and PAR2 attempts (unsolved rounds receive a 100-attempt penalty).
+                Primary quality metrics are solved count and PAR2 attempts. Unsolved rounds receive twice the attempt budget as a penalty.
                 Lower PAR2 is better.
               </p>
             </article>
@@ -301,11 +329,10 @@
             <article class="panel method-card">
               <h3>Audit and model identity</h3>
               <p id="audit-summary-text">
-                All 1,620 CLI submissions (790 Sol and 830 Neon) were audited with zero unexpected commands and zero human interventions.
-                Every recorded rank matches the frozen tables.
+                Audit metadata is loaded with the selected task set.
               </p>
               <p>
-                Codex transcripts reported executedModel for both Sol runs.
+                Codex transcripts reported executedModel for the published Sol and Astra runs.
                 Antigravity did not report executedModel for Neon, so the Neon audit verifies the configured gemini-4-neon model and thought_level setting without independent backend identity verification.
               </p>
             </article>
@@ -313,12 +340,12 @@
             <article class="panel method-card">
               <h3>Pilot scope and exclusions</h3>
               <p>
-                Each participant attempted the 10 English tasks once in fresh agent contexts using baseline prompts that state rules without suggesting a search strategy.
-                No independent repeats were run.
+                The English pilot used one trial per participant and fresh agent contexts with baseline prompts that state rules without suggesting a search strategy.
+                Participants shared the filesystem. Command audits verified their recorded tool use; filesystem isolation was not enforced.
               </p>
               <p>
-                Russian tasks (ru-01 through ru-10) were not run and are excluded from all reported figures.
-                Single-trial results on 10 selected words carry substantial variance and do not establish a general model ranking.
+                The selected collection determines the language and task set. Other collections do not enter its metrics.
+                Small task sets and single trials carry substantial variance and do not establish a general model ranking.
               </p>
             </article>
           </div>
@@ -326,7 +353,7 @@
           <article class="panel panel-wide fingerprints-panel">
             <div class="panel-head">
               <h3>Canonical provenance</h3>
-              <span class="panel-meta">All four runs share identical dataset and protocol fingerprints</span>
+              <span class="panel-meta">Runs within this collection share dataset and protocol fingerprints</span>
             </div>
             <dl class="fingerprint-list">
               <div>
@@ -343,9 +370,7 @@
               </div>
               <div>
                 <dt>Canonical source</dt>
-                <dd>
-                  <a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/results/2026-11-23-neon-en/comparison.json" target="_blank" rel="noreferrer">results/2026-11-23-neon-en/comparison.json</a>
-                </dd>
+                <dd id="canonical-sources"></dd>
               </div>
             </dl>
           </article>

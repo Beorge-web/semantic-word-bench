@@ -9,6 +9,7 @@ export const normalize = word => word.normalize('NFC').toLowerCase().replaceAll(
 
 export class Suite {
   constructor(directory = resolve(root, 'data')) {
+    this.directory = resolve(directory);
     const manifest = readFileSync(resolve(directory, 'manifest.json'));
     this.manifest = JSON.parse(manifest);
     this.limit = this.manifest.max_guesses;

@@ -13,7 +13,7 @@ export function renderPar2Chart(runs, focusedIds, maxGuesses, par2Penalty) {
   const xOf = value => left + (Math.min(par2Penalty, Math.max(0, value)) / par2Penalty) * plotW;
   const budgetX = xOf(maxGuesses);
 
-  const ticks = [0, 25, 50, 75, 100];
+  const ticks = Array.from({ length: 5 }, (_, i) => par2Penalty * i / 4);
   const axisY = top + runs.length * rowStep + 6;
   const grid = ticks
     .map(tick => {
@@ -50,7 +50,7 @@ export function renderPar2Chart(runs, focusedIds, maxGuesses, par2Penalty) {
   return `
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(aria)}">
       <rect x="${budgetX.toFixed(1)}" y="${top - 6}" width="${(plotW - (budgetX - left)).toFixed(1)}" height="${(axisY - top + 2).toFixed(1)}" fill="#e27878" opacity="0.045"/>
-      <text x="${budgetX.toFixed(1)}" y="18" text-anchor="middle" fill="#8998a8" font-family="${FONT_MONO}" font-size="10.5">50 budget</text>
+      <text x="${budgetX.toFixed(1)}" y="18" text-anchor="middle" fill="#8998a8" font-family="${FONT_MONO}" font-size="10.5">${maxGuesses} budget</text>
       <text x="${(left + plotW).toFixed(1)}" y="18" text-anchor="end" fill="#708090" font-family="${FONT_MONO}" font-size="10">penalty zone</text>
       ${grid}
       ${rows}
@@ -74,7 +74,7 @@ export function renderSolvedUnitChart(runs, words, focusedIds) {
   const colHeaders = words
     .map((word, idx) => {
       const cx = left + idx * (cellW + gap) + cellW / 2;
-      const num = word.id.replace('en-', '');
+      const num = word.id.replace(/^(en|ru)-/, '');
       return `<text x="${cx.toFixed(1)}" y="18" text-anchor="middle" fill="#708090" font-family="${FONT_MONO}" font-size="10.5"><title>${escapeHtml(word.id)}: ${escapeHtml(word.answer)}</title>${escapeHtml(num)}</text>`;
     })
     .join('');
@@ -114,7 +114,7 @@ export function renderSolvedUnitChart(runs, words, focusedIds) {
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(aria)}">
       ${colHeaders}
       ${rows}
-      <text x="${left}" y="${axisY + 14}" fill="#708090" font-size="11">Columns correspond to tasks en-01 through en-10. Filled = solved.</text>
+      <text x="${left}" y="${axisY + 14}" fill="#708090" font-size="11">Columns follow the selected task order. Filled = solved.</text>
     </svg>
   `;
 }
@@ -235,7 +235,7 @@ export function renderSpeedDistributionChart(runs, focusedIds) {
   `;
 }
 
-export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses, vocabularySize) {
+export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses, vocabularySize, mode = 'best') {
   const width = 920;
   const height = 264;
   const left = 64;
@@ -244,7 +244,7 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
   const bottom = 42;
   const plotW = width - left - right;
   const plotH = height - top - bottom;
-  const maxLog = Math.log10(vocabularySize);
+  const maxLog = Math.max(1, Math.log10(vocabularySize));
 
   const xOf = attempt => left + ((attempt - 1) / Math.max(1, maxGuesses - 1)) * plotW;
   const yOfRank = rank => {
@@ -252,8 +252,8 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
     return top + (Math.log10(clamped) / maxLog) * plotH;
   };
 
-  const yTicks = [1, 10, 100, 1000, 10000, vocabularySize];
-  const xTicks = [1, 10, 20, 30, 40, 50];
+  const yTicks = [...new Set([1, 10, 100, 1000, 10000, vocabularySize].filter(rank => rank <= vocabularySize))].sort((a, b) => a - b);
+  const xTicks = [...new Set([1, ...Array.from({ length: 5 }, (_, i) => Math.round(maxGuesses * (i + 1) / 5))].filter(attempt => attempt >= 1 && attempt <= maxGuesses))];
 
   const yGrid = yTicks
     .map(rank => {
@@ -287,18 +287,21 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
       const strokeW = active ? '2.3' : '1.4';
 
       const pts = [];
-      let lastBest = vocabularySize;
       for (const ev of round.events) {
-        const best = ev.best_rank_so_far ?? lastBest;
-        lastBest = best;
-        pts.push({ attempt: ev.attempt, rank: best, word: ev.word, rawRank: ev.rank });
+        const rank = mode === 'raw' ? ev.rank : ev.best_rank_so_far;
+        pts.push({ attempt: ev.attempt, rank, word: ev.word, rawRank: ev.rank });
       }
 
-      const pathD = pts
-        .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${xOf(pt.attempt).toFixed(1)} ${yOfRank(pt.rank).toFixed(1)}`)
-        .join(' ');
+      let connected = false;
+      const pathD = pts.map(pt => {
+        if (pt.rank === null || pt.rank === undefined) { connected = false; return ''; }
+        const command = `${connected ? 'L' : 'M'} ${xOf(pt.attempt).toFixed(1)} ${yOfRank(pt.rank).toFixed(1)}`;
+        connected = true;
+        return command;
+      }).join(' ');
 
-      const last = pts[pts.length - 1];
+      const last = pts.findLast(pt => pt.rank !== null && pt.rank !== undefined);
+      if (!last) return '';
       const lx = xOf(last.attempt);
       const ly = yOfRank(last.rank);
       const solved = round.status === 'solved';
@@ -310,6 +313,7 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
         y: ly,
         active,
         solved,
+        displayRank: last.rank,
       });
 
       const marker = solved
@@ -328,7 +332,7 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
   const labels = resolveLabelPositions(endPoints, 18, top + 6, top + plotH - 4)
     .map(item => {
       const opacity = item.active ? '1' : '0.3';
-      const statusText = item.solved ? `#${item.round.attempts}` : `r${formatRank(item.round.best_rank)}`;
+      const statusText = item.solved ? `#${item.round.attempts}` : `r${formatRank(item.displayRank)}`;
       return `
         <g opacity="${opacity}">
           <text x="${(left + plotW + 14).toFixed(1)}" y="${(item.resolvedY + 4).toFixed(1)}" fill="${item.run.color}" font-size="11.5" font-weight="500">${escapeHtml(item.run.short_label)}</text>
@@ -339,7 +343,7 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
     .join('');
 
   const answer = runs[0]?.rounds[wordId]?.answer || '';
-  const aria = `Best rank convergence for ${wordId} (${answer}) across attempts 1 to ${maxGuesses}. ${endPoints.map(p => `${p.run.label}: ${p.solved ? `solved on attempt ${p.round.attempts}` : `failed with best rank ${p.round.best_rank}`}`).join('. ')}.`;
+  const aria = `${mode === 'raw' ? 'Every guess rank' : 'Best rank so far'} for ${wordId} (${answer}) across attempts 1 to ${maxGuesses}. ${endPoints.map(p => `${p.run.label}: ${p.solved ? `solved on attempt ${p.round.attempts}` : `failed with best rank ${p.round.best_rank}`}`).join('. ')}.`;
 
   return `
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(aria)}">
@@ -348,7 +352,7 @@ export function renderRoundTrajectoryChart(runs, wordId, focusedIds, maxGuesses,
       ${series}
       ${labels}
       <text x="${(left + plotW / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle" fill="#708090" font-size="11.5">Attempt number</text>
-      <text x="14" y="${(top + plotH / 2).toFixed(1)}" text-anchor="middle" fill="#708090" font-size="11.5" transform="rotate(-90 14 ${(top + plotH / 2).toFixed(1)})">Best rank (log scale)</text>
+      <text x="14" y="${(top + plotH / 2).toFixed(1)}" text-anchor="middle" fill="#708090" font-size="11.5" transform="rotate(-90 14 ${(top + plotH / 2).toFixed(1)})">${mode === 'raw' ? 'Guess rank' : 'Best rank'} (log scale)</text>
     </svg>
   `;
 }

@@ -1,0 +1,6 @@
+{
+  "name": "semantic-word-bench-modern-embeddings",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@huggingface/transformers": "3.8.1" }
+}

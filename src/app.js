@@ -17,6 +17,8 @@ export class App {
       if (typeof metadata[field] !== 'string' || !metadata[field].trim() || metadata[field].length > 120) throw new Error(`Invalid ${field}`);
     }
     if (!['cli', 'http', 'browser'].includes(metadata.track)) throw new Error('Invalid track');
+    if (metadata.participant_type !== undefined && !['model', 'human'].includes(metadata.participant_type)) throw new Error('Invalid participant type');
+    if (metadata.participant_type === 'human' && metadata.effort !== 'none') throw new Error('Human participants use effort none');
     const repetition = metadata.repetition ?? 1;
     if (!Number.isInteger(repetition) || repetition < 1 || repetition > 100) throw new Error('Invalid repetition');
     return this.store.create({
@@ -30,7 +32,8 @@ export class App {
   get(id) { return this.store.get(id); }
   present(run) { return { ...run, summary: summarize(run, this.suite.limit) }; }
   prompt(id, roundId, options) {
-    return renderPrompt(this.get(id), roundId, { cliCommand: `bun "${resolve(root, 'cli.js')}" --database "${this.database}"`, maxGuesses: this.suite.limit, ...options });
+    const suiteArgument = this.suite.directory && this.suite.directory !== resolve(root, 'data') ? ` --suite "${this.suite.directory}"` : '';
+    return renderPrompt(this.get(id), roundId, { cliCommand: `bun "${resolve(root, 'cli.js')}" --database "${this.database}"${suiteArgument}`, maxGuesses: this.suite.limit, ...options });
   }
 
   change(id, action, body = {}) {

@@ -1,61 +1,14 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { analyzeRun } from '../analysis/search.js';
+import { participantInfo, auditMatchesRun, summarizeEfforts } from '../analysis/participants.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const siteDir = resolve(root, 'site');
 const siteDataPath = resolve(siteDir, 'data/results.json');
 const distDir = resolve(root, 'dist');
-const comparisonPath = resolve(root, 'results/2026-11-23-neon-en/comparison.json');
-const neonAuditPath = resolve(root, 'results/2026-11-23-neon-en/audit.json');
-const solAuditPath = resolve(root, 'results/2026-11-23-sol-high-en/audit.json');
-
-const MODEL_META = {
-  'gpt-6.1-sol:high': {
-    id: 'gpt-6.1-sol-high',
-    key: 'gpt-6.1-sol',
-    label: 'GPT-6.1 Sol high',
-    shortLabel: 'Sol 6.1 high',
-    family: 'Sol',
-    providerDisplay: 'Codex',
-    color: '#6b9eff',
-    executedModelVerified: true,
-    executedModelNote: 'Verified via Codex transcript audit (executedModel: gpt-6.1-sol).',
-  },
-  'gpt-6.2-sol:high': {
-    id: 'gpt-6.2-sol-high',
-    key: 'gpt-6.2-sol',
-    label: 'GPT-6.2 Sol high',
-    shortLabel: 'Sol 6.2 high',
-    family: 'Sol',
-    providerDisplay: 'Codex',
-    color: '#3fd1a5',
-    executedModelVerified: true,
-    executedModelNote: 'Verified via Codex transcript audit (executedModel: gpt-6.2-sol).',
-  },
-  'gemini-4-neon:low': {
-    id: 'gemini-4-neon-low',
-    key: 'neon-low',
-    label: 'Gemini 4 Neon low',
-    shortLabel: 'Neon low',
-    family: 'Neon',
-    providerDisplay: 'Antigravity',
-    color: '#e6a955',
-    executedModelVerified: false,
-    executedModelNote: 'Antigravity did not report executedModel; audit verifies configured gemini-4-neon and thought_level low.',
-  },
-  'gemini-4-neon:medium': {
-    id: 'gemini-4-neon-medium',
-    key: 'neon-medium',
-    label: 'Gemini 4 Neon medium',
-    shortLabel: 'Neon medium',
-    family: 'Neon',
-    providerDisplay: 'Antigravity',
-    color: '#b78bfa',
-    executedModelVerified: false,
-    executedModelNote: 'Antigravity did not report executedModel; audit verifies configured gemini-4-neon and thought_level medium.',
-  },
-};
+const catalogPath = resolve(root, 'results/catalog.json');
 
 function mean(values) {
   if (!values.length) return null;
@@ -93,9 +46,9 @@ export function buildDataset(comparison, neonAudit, solAudit) {
   const roundOrder = comparison.paired.map(item => item.id);
 
   const runs = comparison.runs.map(run => {
-    const metaKey = `${run.metadata.model}:${run.metadata.effort}`;
-    const info = MODEL_META[metaKey];
-    if (!info) throw new Error(`Unknown model/effort entry in comparison.json: ${metaKey}`);
+    const runAudits = [...solAudit.rounds, ...neonAudit.rounds].filter(audit => auditMatchesRun(audit, run));
+    const info = participantInfo(run, runAudits);
+    const search = analyzeRun(run, runAudits);
 
     const roundEntries = roundOrder.map(roundId => {
       const round = run.rounds[roundId];
@@ -125,6 +78,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
 
       return {
         id: round.id,
+        vocabulary_size: round.vocabulary_size,
         answer: answerByRound.get(round.id),
         status: round.status,
         attempts: events.length,
@@ -136,6 +90,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
         cycle_median_ms: median(cycles),
         cycle_max_ms: cycles.length ? cycles[cycles.length - 1] : null,
         events: compactEvents,
+        search: search.rounds[round.id],
       };
     });
 
@@ -158,7 +113,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
     const solvedMedian = median(solvedAttempts);
     const serviceMeanMs = mean(allServiceMs);
 
-    const canonical = run.summary?.by_language?.en;
+    const canonical = comparison.scope === 'all' ? run.summary?.all : run.summary?.by_language?.[comparison.scope];
     if (canonical) {
       assertClose(solvedRounds.length, canonical.solved, `${info.id}.solved`, 0);
       assertClose(par2, canonical.par2, `${info.id}.par2`);
@@ -197,6 +152,9 @@ export function buildDataset(comparison, neonAudit, solAudit) {
       model: run.metadata.model,
       provider: run.metadata.provider,
       provider_display: info.providerDisplay,
+      service_tier: info.serviceTier,
+      comparison_group: info.comparisonGroup,
+      participant_type: run.metadata.participant_type ?? 'model',
       effort: run.metadata.effort,
       track: run.metadata.track,
       prompt_mode: run.metadata.prompt_mode,
@@ -228,6 +186,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
         service_mean_ms: serviceMeanMs,
         hits_at_k: Object.fromEntries([1, 2, 10, 100, 1000].map(k => [k, roundEntries.filter(r => r.best_rank !== null && r.best_rank <= k).length])),
       },
+      search: search.summary,
       outliers,
       rounds: Object.fromEntries(roundEntries.map(r => [r.id, r])),
     };
@@ -256,7 +215,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
 
   return {
     schema_version: 1,
-    generated_from: 'results/2026-11-23-neon-en/comparison.json',
+    generated_from: comparison.sources ?? [],
     suite_id: comparison.runs[0].suite_id,
     suite_fingerprint: suiteFingerprint,
     protocol_fingerprint: protocolFingerprint,
@@ -264,12 +223,15 @@ export function buildDataset(comparison, neonAudit, solAudit) {
     repeats: comparison.repeats,
     max_guesses: maxGuesses,
     par2_penalty: par2Penalty,
-    vocabulary_size: 50000,
+    vocabulary_size: Math.max(...comparison.runs.flatMap(run => Object.values(run.rounds).map(round => round.vocabulary_size))),
+    vocabulary_sizes: Object.fromEntries(Object.values(comparison.runs[0].rounds).map(round => [round.language ?? round.id.slice(0, 2), round.vocabulary_size])),
     started_at: comparison.started_at,
     completed_at: comparison.completed_at,
     timing_note: comparison.timing_note,
     audit: {
       total_commands: solAudit.commands + neonAudit.commands,
+      audited_rounds: comparison.runs.reduce((sum, run) => sum + Object.keys(run.rounds).filter(round => [...solAudit.rounds, ...neonAudit.rounds].some(audit => auditMatchesRun(audit, run) && audit.round === round)).length, 0),
+      total_rounds: comparison.runs.reduce((sum, run) => sum + Object.keys(run.rounds).length, 0),
       sol_commands: solAudit.commands,
       neon_commands: neonAudit.commands,
       unexpected_commands: solUnexpected + neonUnexpected,
@@ -280,41 +242,79 @@ export function buildDataset(comparison, neonAudit, solAudit) {
     },
     words,
     runs,
+    effort_comparisons: summarizeEfforts(runs),
   };
 }
 
-function readDataset() {
-  if (!existsSync(comparisonPath)) {
-    throw new Error(`Canonical results not found at ${comparisonPath}`);
+export function mergeComparisons(comparisons) {
+  if (!comparisons.length) throw Error('Collection has no comparisons');
+  const first = comparisons[0];
+  const tasks = JSON.stringify(first.paired.map(({ id, answer }) => ({ id, answer })));
+  const interfaceTrack = first.runs[0]?.metadata.track;
+  const promptMode = first.runs[0]?.metadata.prompt_mode;
+  const byId = new Map();
+  for (const report of comparisons) {
+    if (report.scope !== first.scope || report.max_guesses !== first.max_guesses || JSON.stringify(report.paired.map(({ id, answer }) => ({ id, answer }))) !== tasks) throw Error('Collection mixes different scopes, budgets or task sets');
+    for (const run of report.runs) {
+      if (run.metadata.track !== interfaceTrack || run.metadata.prompt_mode !== promptMode) throw Error('Collection mixes different interfaces or prompt modes');
+      if (!Object.values(run.rounds).every(round => ['solved', 'exhausted', 'abandoned'].includes(round.status))) throw Error('Incomplete runs cannot enter a completed collection');
+      if (byId.has(run.id) && JSON.stringify(byId.get(run.id)) !== JSON.stringify(run)) throw Error(`Conflicting snapshots for run ${run.id}`);
+      byId.set(run.id, run);
+    }
   }
-  const comparison = JSON.parse(readFileSync(comparisonPath, 'utf8'));
-  const neonAudit = JSON.parse(readFileSync(neonAuditPath, 'utf8'));
-  const solAudit = JSON.parse(readFileSync(solAuditPath, 'utf8'));
+  return { ...first, completed_at: comparisons.map(report => report.completed_at).filter(Boolean).sort().at(-1), runs: [...byId.values()] };
+}
 
-  return buildDataset(comparison, neonAudit, solAudit);
+function publishedFiles() {
+  const read = path => JSON.parse(readFileSync(resolve(root, path), 'utf8'));
+  const catalog = read(catalogPath);
+  if (!catalog.collections.length || !catalog.collections.some(entry => entry.id === catalog.default)) throw Error('Invalid collection catalog');
+  const files = new Map();
+  const index = { default: catalog.default, collections: [] };
+  for (const entry of catalog.collections) {
+    if (!/^[a-z0-9][a-z0-9.-]*$/.test(entry.id)) throw Error('Invalid collection ID');
+    const comparison = mergeComparisons(entry.comparisons.map(read));
+    comparison.sources = entry.comparisons;
+    const audits = entry.audits.map(read);
+    const mergeAudits = records => ({
+      commands: records.reduce((sum, record) => sum + record.commands, 0),
+      rounds: records.flatMap(record => record.rounds),
+    });
+    const google = mergeAudits(audits.filter(record => record.configured_model?.startsWith('gemini-')));
+    const others = mergeAudits(audits.filter(record => !record.configured_model?.startsWith('gemini-')));
+    const dataset = { ...buildDataset(comparison, google, others), collection_id: entry.id, collection_title: entry.title, embedding_track: entry.track };
+    const seenIds = new Set();
+    for (const run of dataset.runs) {
+      if (seenIds.has(run.id)) run.id = `${run.id}-${run.run_id}`;
+      seenIds.add(run.id);
+    }
+    const file = entry.id === catalog.default ? 'results.json' : `${entry.id}.json`;
+    files.set(file, dataset);
+    index.collections.push({ id: entry.id, title: entry.title, track: entry.track, scope: dataset.scope, file, suite_fingerprint: dataset.suite_fingerprint ?? dataset.runs[0].suite_fingerprint });
+  }
+  files.set('catalog.json', index);
+  return { files, index };
 }
 
 export function checkSiteData() {
-  if (!existsSync(siteDataPath) || readFileSync(siteDataPath, 'utf8') !== JSON.stringify(readDataset())) {
-    throw new Error('Published dashboard data is missing or stale. Run node scripts/build-site.js and commit site/data/results.json.');
+  for (const [file, content] of publishedFiles().files) {
+    const path = resolve(siteDir, 'data', file);
+    if (!existsSync(path) || readFileSync(path, 'utf8') !== JSON.stringify(content)) throw new Error('Published dashboard data is missing or stale. Run node scripts/build-site.js and commit site/data/.');
   }
   console.log('Published dashboard data matches canonical benchmark records.');
 }
 
 export function build() {
-  const dataset = readDataset();
+  const { files } = publishedFiles();
   mkdirSync(dirname(siteDataPath), { recursive: true });
-  writeFileSync(siteDataPath, JSON.stringify(dataset), 'utf8');
+  for (const [file, content] of files) writeFileSync(resolve(siteDir, 'data', file), JSON.stringify(content), 'utf8');
 
   rmSync(distDir, { recursive: true, force: true });
   mkdirSync(distDir, { recursive: true });
   cpSync(siteDir, distDir, { recursive: true });
 
-  const summaryLine = dataset.runs
-    .map(r => `${r.short_label}: ${r.metrics.solved}/10, PAR2 ${r.metrics.par2.toFixed(1)}, mean ${(r.metrics.cycle_mean_ms / 1000).toFixed(2)}s`)
-    .join(' | ');
   console.log(`Built static dashboard in ${distDir}`);
-  console.log(summaryLine);
+  for (const dataset of files.values()) if (dataset.runs) console.log(dataset.runs.map(r => `${r.short_label}: ${r.metrics.solved}/${r.metrics.rounds}, PAR2 ${r.metrics.par2.toFixed(1)}`).join(' | '));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

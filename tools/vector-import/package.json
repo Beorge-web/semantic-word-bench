@@ -1,0 +1,8 @@
+{
+  "name": "semantic-word-bench-vector-import",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "h5wasm": "0.10.3"
+  }
+}

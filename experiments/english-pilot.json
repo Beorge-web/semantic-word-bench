@@ -1,0 +1,13 @@
+{
+  "id": "numberbatch-v1-en",
+  "suite": "data",
+  "scope": "en",
+  "repetitions": 1,
+  "participants": [
+    { "model": "gpt-6.1-sol", "provider": "Codex-beorge", "efforts": ["high"], "supported_efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "service_tier": "default" },
+    { "model": "gpt-6.2-sol", "provider": "Codex-beorge", "efforts": ["high"], "supported_efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "service_tier": "default" },
+    { "model": "gpt-6-astra", "provider": "Codex-beorge", "efforts": ["high"], "supported_efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "service_tier": "default" },
+    { "model": "gpt-6.2-astra", "provider": "Codex-beorge", "efforts": ["high"], "supported_efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "service_tier": "default" },
+    { "model": "gemini-4-neon", "provider": "Antigravity GoogleMain", "efforts": ["low", "medium"], "supported_efforts": ["low", "medium"], "service_tier": null }
+  ]
+}

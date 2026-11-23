@@ -1,0 +1,44 @@
+{
+  "id": "bge-small-en-cls-q8-v1",
+  "version": 1,
+  "track": "bge-small-en-v1.5-cls-q8",
+  "max_guesses": 50,
+  "embedding": "Xenova/bge-small-en-v1.5@ea104dacec62c0de699686887e3f920caeb4f3e3",
+  "source_url": "https://huggingface.co/Xenova/bge-small-en-v1.5/tree/ea104dacec62c0de699686887e3f920caeb4f3e3",
+  "source_sha256": null,
+  "license": "CC BY-SA 4.0",
+  "vocabulary_source": "semantic-word-bench-numberbatch-19.08-v1",
+  "vocabulary_license": "CC BY-SA 4.0",
+  "vector_bank_sha256": "b61cd74e6b8b8a35aadb2de93acc044af040c97069f19c796cfe964ef69c70bb",
+  "generator": "semantic-suite-js-v1",
+  "target_selection": "explicit",
+  "seed": null,
+  "languages": {
+    "en": {
+      "file": "en.json.gz",
+      "sha256": "158a1834c5f13b2ddf4a18a8a66188af9e5f174e2b254968cc580ed4b5f596e8",
+      "vocabulary_size": 50000,
+      "rounds": [
+        "en-01",
+        "en-02",
+        "en-03",
+        "en-04",
+        "en-05",
+        "en-06",
+        "en-07",
+        "en-08",
+        "en-09",
+        "en-10"
+      ]
+    }
+  },
+  "embedding_license": "MIT",
+  "embedding_parameters": {
+    "model_revision": "ea104dacec62c0de699686887e3f920caeb4f3e3",
+    "pooling": "cls",
+    "prefix": "",
+    "dtype": "float32le",
+    "runtime": "@huggingface/transformers@3.8.1",
+    "vocabulary_sha256": "e19fae982caf24664811bfb705423237067658dc64626caa402b7e04cc2728ad"
+  }
+}
