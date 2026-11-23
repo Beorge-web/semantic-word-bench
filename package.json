@@ -1,0 +1,13 @@
+{
+  "name": "semantic-word-bench",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "bun": ">=1.2.3" },
+  "scripts": {
+    "bench": "bun cli.js",
+    "test": "bun test",
+    "serve": "bun cli.js serve",
+    "check-data": "bun cli.js check-data"
+  }
+}
