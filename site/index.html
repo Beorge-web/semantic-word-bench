@@ -91,10 +91,23 @@
 
           <article class="panel panel-wide">
             <div class="panel-head">
-              <h3>Cumulative solves within the 50-guess budget</h3>
-              <span class="panel-meta">Words solved at or before attempt k</span>
+              <h3>Attempts needed for each word</h3>
+              <span class="panel-meta">Lower is better. Each bar uses the same 0-50 scale.</span>
             </div>
-            <div class="chart-box" id="chart-cumulative"></div>
+            <div id="chart-attempts"></div>
+            <p class="panel-footnote">Numbers show attempts until the exact answer. Fail means the word was not found within 50 attempts. A win on attempt 50 still counts as solved.</p>
+          </article>
+
+          <article class="panel panel-wide">
+            <div class="panel-head">
+              <h3>Rounds reaching top k</h3>
+              <span class="panel-meta">Secondary proximity measure. Higher is better.</span>
+            </div>
+            <div class="table-wrap"><table class="data-table">
+              <thead><tr><th scope="col">Model</th><th scope="col" class="num">Exact</th><th scope="col" class="num">Top 2</th><th scope="col" class="num">Top 10</th><th scope="col" class="num">Top 100</th><th scope="col" class="num">Top 1,000</th></tr></thead>
+              <tbody id="proximity-table-body"></tbody>
+            </table></div>
+            <p class="panel-footnote">Hit@k counts rounds where the best guess reached rank k or better, including exact wins. A nearby guess is not an exact answer. These counts do not change the solve rate or PAR2. Top 2 and top 10 add no near misses in this pilot.</p>
           </article>
 
           <article class="panel panel-wide">

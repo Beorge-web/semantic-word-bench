@@ -21,6 +21,17 @@ Providers differ, and the trials ran at different times. Timing measures the com
 
 These results cover only the English subset. Russian rounds were not run and are excluded from the reported metrics. This is one trial on 10 selected words, not a general ranking of model intelligence.
 
+Hit@k is a secondary proximity measure: the number of rounds where a guess reached rank k or better within the attempt budget. Counts include exact wins. Reaching a nearby word does not count as solving the round and does not change PAR2.
+
+| Model | Exact | Hit@2 | Hit@10 | Hit@100 | Hit@1000 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| GPT-6.1 Sol high | 3/10 | 3/10 | 3/10 | 3/10 | 7/10 |
+| GPT-6.2 Sol high | 7/10 | 7/10 | 7/10 | 8/10 | 10/10 |
+| Gemini 4 Neon low | 4/10 | 4/10 | 4/10 | 4/10 | 6/10 |
+| Gemini 4 Neon medium | 5/10 | 5/10 | 5/10 | 6/10 | 8/10 |
+
+Hit@2 and Hit@10 add no near misses in this trial. Hit@100 includes one additional unsolved round for Sol 6.2 and Neon medium. The dashboard shows these thresholds separately from exact wins and compares attempts for each word.
+
 [Neon results and four-model comparison](results/2026-11-23-neon-en/README.md) · [CSV](results/2026-11-23-neon-en/rounds.csv) · [Raw comparison](results/2026-11-23-neon-en/comparison.json) · [Neon agent audit](results/2026-11-23-neon-en/audit.json)
 
 [Earlier Sol report and methodology](results/2026-11-23-sol-high-en/README.md)

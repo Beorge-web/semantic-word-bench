@@ -170,11 +170,6 @@ export function buildDataset(comparison, neonAudit, solAudit) {
       assertClose(cycleMedianMs, canonical.cycle_median_ms, `${info.id}.cycle_median_ms`, 1e-4);
     }
 
-    const cumulativeSolves = [];
-    for (let attempt = 0; attempt <= maxGuesses; attempt++) {
-      cumulativeSolves.push(solvedRounds.filter(r => r.attempts <= attempt).length);
-    }
-
     const outliers = [];
     for (const r of roundEntries) {
       for (const e of r.events) {
@@ -231,8 +226,8 @@ export function buildDataset(comparison, neonAudit, solAudit) {
         cycle_p95_ms: percentile(allCycles, 0.95),
         cycle_max_ms: allCycles.at(-1) ?? null,
         service_mean_ms: serviceMeanMs,
+        hits_at_k: Object.fromEntries([1, 2, 10, 100, 1000].map(k => [k, roundEntries.filter(r => r.best_rank !== null && r.best_rank <= k).length])),
       },
-      cumulative_solves: cumulativeSolves,
       outliers,
       rounds: Object.fromEntries(roundEntries.map(r => [r.id, r])),
     };

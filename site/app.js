@@ -1,5 +1,5 @@
 import {
-  renderCumulativeChart,
+  renderAttemptsChart,
   renderPar2Chart,
   renderRoundTrajectoryChart,
   renderSolvedUnitChart,
@@ -167,7 +167,11 @@ function renderSummaryCards(data) {
 function renderQualitySection(data) {
   el('chart-par2').innerHTML = renderPar2Chart(data.runs, state.focusedIds, data.max_guesses, data.par2_penalty);
   el('chart-solved').innerHTML = renderSolvedUnitChart(data.runs, data.words, state.focusedIds);
-  el('chart-cumulative').innerHTML = renderCumulativeChart(data.runs, state.focusedIds, data.max_guesses);
+  el('chart-attempts').innerHTML = renderAttemptsChart(data.runs, data.words, state.focusedIds, data.max_guesses);
+  el('proximity-table-body').innerHTML = data.runs.map(run => `<tr class="${isRunActive(run.id, state.focusedIds) ? '' : 'is-dimmed'}">
+    <th scope="row"><span class="model-cell"><span class="model-dot" style="--model-color:${run.color}" aria-hidden="true"></span>${escapeHtml(run.short_label)}</span></th>
+    ${[1, 2, 10, 100, 1000].map(k => `<td class="num">${run.metrics.hits_at_k[k]}/${run.metrics.rounds}</td>`).join('')}
+  </tr>`).join('');
 
   el('quality-table-body').innerHTML = data.runs
     .map(run => {
@@ -461,7 +465,7 @@ function bindEvents() {
 async function init() {
   bindEvents();
   try {
-    const response = await fetch('./data/results.json', { headers: { accept: 'application/json' } });
+    const response = await fetch('./data/results.json', { cache: 'no-cache', headers: { accept: 'application/json' } });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} while loading canonical results.`);
     }

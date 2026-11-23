@@ -119,108 +119,29 @@ export function renderSolvedUnitChart(runs, words, focusedIds) {
   `;
 }
 
-export function renderCumulativeChart(runs, focusedIds, maxGuesses) {
-  const width = 920;
-  const height = 268;
-  const left = 52;
-  const right = 152;
-  const top = 20;
-  const bottom = 42;
-  const plotW = width - left - right;
-  const plotH = height - top - bottom;
-  const totalWords = runs[0]?.metrics.rounds || 10;
-
-  const xOf = attempt => left + (attempt / maxGuesses) * plotW;
-  const yOf = solved => top + plotH - (solved / totalWords) * plotH;
-
-  const yTicks = [0, 2, 4, 6, 8, 10];
-  const xTicks = [0, 10, 20, 30, 40, 50];
-
-  const yGrid = yTicks
-    .map(v => {
-      const y = yOf(v);
-      return `
-        <line x1="${left}" y1="${y.toFixed(1)}" x2="${(left + plotW).toFixed(1)}" y2="${y.toFixed(1)}" stroke="${v === 0 ? '#313f4d' : '#1d2630'}" stroke-width="1"/>
-        <text x="${left - 10}" y="${(y + 4).toFixed(1)}" text-anchor="end" fill="#708090" font-family="${FONT_MONO}" font-size="11">${v}</text>
-      `;
-    })
-    .join('');
-
-  const xGrid = xTicks
-    .map(v => {
-      const x = xOf(v);
-      return `
-        <line x1="${x.toFixed(1)}" y1="${top}" x2="${x.toFixed(1)}" y2="${(top + plotH).toFixed(1)}" stroke="#19212a" stroke-width="1"/>
-        <text x="${x.toFixed(1)}" y="${(top + plotH + 18).toFixed(1)}" text-anchor="middle" fill="#708090" font-family="${FONT_MONO}" font-size="11">${v}</text>
-      `;
-    })
-    .join('');
-
-  const lines = runs
-    .map(run => {
-      const curve = run.cumulative_solves || [];
-      const active = isRunActive(run.id, focusedIds);
-      const opacity = active ? '1' : '0.2';
-      const strokeW = active ? '2.4' : '1.5';
-      const commands = [];
-      const stepDots = [];
-
-      for (let a = 0; a < curve.length; a++) {
-        const x = xOf(a);
-        const y = yOf(curve[a]);
-        if (a === 0) {
-          commands.push(`M ${x.toFixed(1)} ${y.toFixed(1)}`);
-        } else {
-          const prevY = yOf(curve[a - 1]);
-          commands.push(`H ${x.toFixed(1)}`);
-          if (curve[a] !== curve[a - 1]) {
-            commands.push(`V ${y.toFixed(1)}`);
-            stepDots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="${run.color}" stroke="#11161c" stroke-width="1.2"><title>${escapeHtml(run.label)}: ${curve[a]} solved by attempt ${a}</title></circle>`);
-          } else if (a === curve.length - 1 && prevY === y) {
-            stepDots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="${run.color}" stroke="#11161c" stroke-width="1.2"/>`);
-          }
-        }
-      }
-
-      return `
-        <g opacity="${opacity}">
-          <path d="${commands.join(' ')}" fill="none" stroke="${run.color}" stroke-width="${strokeW}" stroke-linejoin="round"/>
-          ${stepDots.join('')}
-        </g>
-      `;
-    })
-    .join('');
-
-  const endLabelsRaw = runs.map(run => ({
-    run,
-    y: yOf(run.metrics.solved),
-    active: isRunActive(run.id, focusedIds),
-  }));
-  const endLabels = resolveLabelPositions(endLabelsRaw, 18, top + 8, top + plotH - 4)
-    .map(item => {
-      const opacity = item.active ? '1' : '0.3';
-      return `
-        <g opacity="${opacity}">
-          <line x1="${(left + plotW + 4).toFixed(1)}" y1="${item.y.toFixed(1)}" x2="${(left + plotW + 12).toFixed(1)}" y2="${item.resolvedY.toFixed(1)}" stroke="${item.run.color}" stroke-width="1" opacity="0.6"/>
-          <text x="${(left + plotW + 16).toFixed(1)}" y="${(item.resolvedY + 4).toFixed(1)}" fill="${item.run.color}" font-size="12" font-weight="500">${escapeHtml(item.run.short_label)}</text>
-          <text x="${(width - 4).toFixed(1)}" y="${(item.resolvedY + 4).toFixed(1)}" text-anchor="end" fill="#edf2f7" font-family="${FONT_MONO}" font-size="11.5" font-weight="600">${item.run.metrics.solved}/${totalWords}</text>
-        </g>
-      `;
-    })
-    .join('');
-
-  const aria = `Cumulative words solved across attempts 1 to ${maxGuesses}. Final totals: ${runs.map(r => `${r.label} ${r.metrics.solved} of ${totalWords}`).join(', ')}.`;
-
-  return `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(aria)}">
-      ${xGrid}
-      ${yGrid}
-      ${lines}
-      ${endLabels}
-      <text x="${(left + plotW / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle" fill="#708090" font-size="11.5">Attempts submitted (limit ${maxGuesses})</text>
-      <text x="14" y="${(top + plotH / 2).toFixed(1)}" text-anchor="middle" fill="#708090" font-size="11.5" transform="rotate(-90 14 ${(top + plotH / 2).toFixed(1)})">Words solved</text>
-    </svg>
-  `;
+export function renderAttemptsChart(runs, words, focusedIds, maxGuesses) {
+  const headers = runs.map(run => `<th scope="col" style="--model-color:${run.color}">
+    <span class="attempt-model-name">${escapeHtml(run.short_label.replace(/\s(high|low|medium)$/, ''))}</span>
+    <span class="attempt-effort">${escapeHtml(run.effort)}</span>
+  </th>`).join('');
+  const rows = words.map(word => `<tr>
+    <th scope="row">${escapeHtml(word.answer)}</th>
+    ${runs.map(run => {
+      const round = run.rounds[word.id];
+      const solved = round.status === 'solved';
+      const label = `${run.label}, ${word.answer}: ${solved ? `solved in ${round.attempts} attempts` : `not solved in ${maxGuesses} attempts, best rank ${round.best_rank}`}`;
+      return `<td style="--model-color:${run.color}" class="${isRunActive(run.id, focusedIds) ? '' : 'is-dimmed'}">
+        <span class="attempt-result ${solved ? 'is-solved' : 'is-failed'}" aria-label="${escapeHtml(label)}">
+          ${solved
+            ? `<span class="attempt-track" aria-hidden="true"><span class="attempt-fill" style="width:${round.attempts / maxGuesses * 100}%"></span></span><span class="attempt-count">${round.attempts}</span>`
+            : '<span class="attempt-fail">Fail</span>'}
+        </span>
+      </td>`;
+    }).join('')}
+  </tr>`).join('');
+  return `<table class="attempts-table" aria-label="Attempts used to solve each word. Lower is better. Fail means not solved within ${maxGuesses} attempts.">
+    <thead><tr><th scope="col">Word</th>${headers}</tr></thead><tbody>${rows}</tbody>
+  </table>`;
 }
 
 export function renderSpeedDistributionChart(runs, focusedIds) {

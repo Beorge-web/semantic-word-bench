@@ -490,7 +490,6 @@ h1 {
   font-family: var(--font-sans);
 }
 
-#chart-cumulative svg,
 #chart-speed svg,
 #chart-trajectory svg {
   min-width: 920px;
@@ -561,6 +560,114 @@ h1 {
 }
 
 /* Tables */
+
+.attempts-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.attempts-table th,
+.attempts-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.attempts-table th:first-child {
+  width: 110px;
+  font-weight: 500;
+}
+
+.attempts-table thead th {
+  font-weight: 500;
+  padding-bottom: 16px;
+}
+
+.attempt-model-name,
+.attempt-effort {
+  display: block;
+}
+
+.attempt-model-name {
+  color: var(--model-color, var(--text));
+}
+
+.attempt-effort {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.attempt-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+}
+
+.attempt-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.attempt-fill {
+  display: block;
+  height: 100%;
+  background: var(--model-color);
+}
+
+.attempt-count {
+  width: 24px;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.attempt-fail {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.attempts-table .is-dimmed {
+  opacity: 0.3;
+}
+
+@media (max-width: 600px) {
+  .attempts-table th,
+  .attempts-table td {
+    padding: 10px 2px;
+    font-size: 12px;
+  }
+
+  .attempts-table th:first-child {
+    width: 82px;
+    font-size: 11px;
+  }
+
+  .attempt-model-name,
+  .attempt-effort {
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .attempt-track {
+    display: none;
+  }
+
+  .attempt-result {
+    justify-content: center;
+  }
+
+  .attempt-count {
+    width: auto;
+    color: var(--model-color);
+  }
+}
 
 .table-wrap,
 .log-table-wrap {
