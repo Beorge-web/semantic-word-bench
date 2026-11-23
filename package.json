@@ -8,6 +8,8 @@
     "bench": "bun cli.js",
     "test": "bun test",
     "serve": "bun cli.js serve",
-    "check-data": "bun cli.js check-data"
+    "check-data": "bun cli.js check-data",
+    "build:site": "node scripts/build-site.js",
+    "preview:site": "node scripts/dev-site.js --build"
   }
 }

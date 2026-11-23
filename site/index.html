@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Semantic Word Bench - English Pilot Results</title>
+  <meta name="description" content="Public static results viewer for the Semantic Word Bench English pilot comparing GPT-6.1 Sol high, GPT-6.2 Sol high, Gemini 4 Neon low, and Gemini 4 Neon medium.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to benchmark results</a>
+
+  <div class="page">
+    <header class="site-header">
+      <div class="header-top">
+        <p class="eyebrow">SEMANTIC WORD BENCH / ENGLISH PILOT</p>
+        <nav class="header-links" aria-label="Repository links">
+          <a href="https://github.com/Beorge-web/semantic-word-bench" target="_blank" rel="noreferrer">Repository</a>
+          <a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/results/2026-11-23-neon-en/comparison.json" target="_blank" rel="noreferrer">Raw JSON</a>
+          <a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/results/2026-11-23-neon-en/rounds.csv" target="_blank" rel="noreferrer">CSV</a>
+        </nav>
+      </div>
+      <h1>Semantic search benchmark results</h1>
+      <p class="subtitle">
+        Four completed English baseline runs on 10 hidden words with frozen ConceptNet Numberbatch ranks.
+        Quality (solved words and PAR2) and interaction speed are reported separately.
+      </p>
+      <dl class="meta-strip" id="meta-strip" aria-label="Experiment scope">
+        <div><dt>Scope</dt><dd id="meta-scope">10 English words (Russian not run)</dd></div>
+        <div><dt>Budget</dt><dd id="meta-budget">50 guesses / round</dd></div>
+        <div><dt>Vocabulary</dt><dd id="meta-vocab">50,000 words</dd></div>
+        <div><dt>Repeats</dt><dd id="meta-repeats">1 trial / model</dd></div>
+        <div><dt>Recorded</dt><dd id="meta-date">Nov 23, 2026</dd></div>
+      </dl>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section id="status-region" class="status-card" aria-live="polite">
+        <p id="status-message">Loading canonical benchmark results...</p>
+      </section>
+
+      <div id="dashboard" hidden>
+        <section class="controls-bar" aria-label="Model focus filter">
+          <div class="controls-label">
+            <span class="label-title">Highlight models</span>
+            <span class="label-hint" id="filter-hint">Showing all 4 participants</span>
+          </div>
+          <div class="pill-group" id="model-filters" role="group" aria-label="Toggle model highlight"></div>
+          <button type="button" class="reset-btn" id="reset-filters" hidden>Show all</button>
+        </section>
+
+        <section class="section" aria-labelledby="overview-heading">
+          <h2 id="overview-heading" class="sr-only">Participant summary</h2>
+          <div class="summary-grid" id="summary-cards"></div>
+        </section>
+
+        <section class="section" id="quality-section" aria-labelledby="quality-heading">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">01 / QUALITY</p>
+              <h2 id="quality-heading">Solve rate and PAR2 attempts</h2>
+            </div>
+            <p class="section-note">
+              PAR2 assigns 100 attempts to each unsolved round, then averages across all 10 words.
+              Lower PAR2 is better. Timing does not affect quality scores.
+            </p>
+          </div>
+
+          <div class="chart-pair">
+            <article class="panel">
+              <div class="panel-head">
+                <h3>PAR2 attempts</h3>
+                <span class="panel-meta">Lower is better (100 = failure penalty)</span>
+              </div>
+              <div class="chart-box" id="chart-par2"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <h3>Words solved by task</h3>
+                <span class="panel-meta">10 English tasks, 50-guess limit each</span>
+              </div>
+              <div class="chart-box" id="chart-solved"></div>
+            </article>
+          </div>
+
+          <article class="panel panel-wide">
+            <div class="panel-head">
+              <h3>Cumulative solves within the 50-guess budget</h3>
+              <span class="panel-meta">Words solved at or before attempt k</span>
+            </div>
+            <div class="chart-box" id="chart-cumulative"></div>
+          </article>
+
+          <article class="panel panel-wide">
+            <div class="panel-head">
+              <h3>Quality metrics summary</h3>
+              <span class="panel-meta">Computed directly from canonical events</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Model</th>
+                    <th scope="col">Provider</th>
+                    <th scope="col" class="num">Solved</th>
+                    <th scope="col" class="num">PAR2</th>
+                    <th scope="col" class="num">Solved mean</th>
+                    <th scope="col" class="num">Solved median</th>
+                    <th scope="col" class="num">Guesses</th>
+                    <th scope="col" class="num">Invalid</th>
+                    <th scope="col" class="num">Duplicates</th>
+                  </tr>
+                </thead>
+                <tbody id="quality-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" id="speed-section" aria-labelledby="speed-heading">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">02 / INTERACTION SPEED</p>
+              <h2 id="speed-heading">Interaction cycle time</h2>
+            </div>
+            <p class="section-note">
+              Measured as intervals between consecutive CLI results within a round, excluding each round's first result.
+              Includes model and agent work, Bun process startup, and data loading. Not provider TTFT or tokens per second.
+            </p>
+          </div>
+
+          <div class="callout-strip" role="note">
+            <strong>Comparison caveat:</strong>
+            Sol runs used Codex and Neon runs used Antigravity GoogleMain at different times.
+            These timings measure each full model-and-agent system under those conditions rather than isolated inference latency.
+          </div>
+
+          <article class="panel panel-wide">
+            <div class="panel-head">
+              <h3>Cycle distribution: mean, median, IQR (P25-P75), and P10-P90</h3>
+              <div class="inline-legend" aria-hidden="true">
+                <span><i class="swatch swatch-diamond"></i>Mean</span>
+                <span><i class="swatch swatch-tick"></i>Median</span>
+                <span><i class="swatch swatch-iqr"></i>P25-P75</span>
+                <span><i class="swatch swatch-whisker"></i>P10-P90</span>
+              </div>
+            </div>
+            <div class="chart-box" id="chart-speed"></div>
+            <p class="panel-footnote" id="speed-footnote"></p>
+          </article>
+
+          <article class="panel panel-wide">
+            <div class="panel-head">
+              <h3>Interaction cycle statistics</h3>
+              <span class="panel-meta">Pooled across all recorded non-initial CLI results</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Model</th>
+                    <th scope="col">Provider</th>
+                    <th scope="col" class="num">Mean</th>
+                    <th scope="col" class="num">Median</th>
+                    <th scope="col" class="num">P25-P75</th>
+                    <th scope="col" class="num">P90</th>
+                    <th scope="col" class="num">Max</th>
+                    <th scope="col" class="num">Cycles</th>
+                  </tr>
+                </thead>
+                <tbody id="speed-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" id="words-section" aria-labelledby="words-heading">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">03 / PER-WORD COMPARISON</p>
+              <h2 id="words-heading">Task matrix and round inspector</h2>
+            </div>
+            <p class="section-note">
+              Select any word or cell to inspect best-rank convergence across attempts and review the full guess-by-guess CLI transcript.
+            </p>
+          </div>
+
+          <article class="panel panel-wide">
+            <div class="panel-head">
+              <h3>Results by English task</h3>
+              <span class="panel-meta">Attempts used and best rank achieved (rank 1 = exact answer)</span>
+            </div>
+            <div class="table-wrap">
+              <table class="matrix-table" aria-label="Per-word comparison across all four models">
+                <thead id="matrix-head"></thead>
+                <tbody id="matrix-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel panel-wide inspector" id="round-inspector" aria-labelledby="inspector-heading">
+            <div class="inspector-header">
+              <div>
+                <p class="section-kicker" id="inspector-kicker">ROUND INSPECTOR</p>
+                <h3 id="inspector-heading">en-01: lantern</h3>
+                <p class="panel-meta" id="inspector-summary"></p>
+              </div>
+              <div class="word-switcher" id="word-switcher" role="group" aria-label="Select task round"></div>
+            </div>
+
+            <div class="inspector-chart-block">
+              <div class="subhead">
+                <h4>Best rank convergence (log scale, rank 50,000 to 1)</h4>
+                <span class="panel-meta">Higher is closer to the target word (top line = rank 1 solved)</span>
+              </div>
+              <div class="chart-box" id="chart-trajectory"></div>
+            </div>
+
+            <div class="inspector-log-block">
+              <div class="log-header">
+                <div>
+                  <h4>Round guess transcript</h4>
+                  <p class="panel-meta" id="log-round-meta"></p>
+                </div>
+                <div class="tab-group" id="log-model-tabs" role="tablist" aria-label="Inspect model guesses for selected word"></div>
+              </div>
+              <div class="log-table-wrap" id="log-panel" role="tabpanel">
+                <table class="data-table log-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" class="num">#</th>
+                      <th scope="col">Submitted word</th>
+                      <th scope="col" class="num">Rank</th>
+                      <th scope="col" class="num">Best so far</th>
+                      <th scope="col" class="num">Cycle</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="log-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" id="methodology-section" aria-labelledby="methodology-heading">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">04 / METHODOLOGY AND LIMITATIONS</p>
+              <h2 id="methodology-heading">Protocol, audit and scope</h2>
+            </div>
+            <p class="section-note">
+              This is a small pilot benchmark of semantic search with feedback, not a measure of general intelligence or coding capability.
+            </p>
+          </div>
+
+          <div class="method-grid">
+            <article class="panel method-card">
+              <h3>Benchmark and scoring</h3>
+              <p>
+                Each round hides one English target word inside a frozen 50,000-word vocabulary ranked by cosine similarity on ConceptNet Numberbatch 19.08 int8 vectors.
+                Rank 1 is the exact answer. Unknown words, invalid formats, and duplicates all consume attempts from the 50-guess budget.
+              </p>
+              <p>
+                Primary quality metrics are solved count out of 10 and PAR2 attempts (unsolved rounds receive a 100-attempt penalty).
+                Lower PAR2 is better.
+              </p>
+            </article>
+
+            <article class="panel method-card">
+              <h3>Timing measurement</h3>
+              <p>
+                Interaction cycle time is the elapsed interval between consecutive CLI results in the same round, excluding the first result of each round.
+                Every submission launched a fresh Bun CLI process and loaded the rank table.
+              </p>
+              <p>
+                Cycles bundle model reasoning, agent orchestration, process startup, and data loading.
+                They are not provider TTFT or generation speed, and Codex versus Antigravity trials were not simultaneous.
+              </p>
+            </article>
+
+            <article class="panel method-card">
+              <h3>Audit and model identity</h3>
+              <p id="audit-summary-text">
+                All 1,620 CLI submissions (790 Sol and 830 Neon) were audited with zero unexpected commands and zero human interventions.
+                Every recorded rank matches the frozen tables.
+              </p>
+              <p>
+                Codex transcripts reported executedModel for both Sol runs.
+                Antigravity did not report executedModel for Neon, so the Neon audit verifies the configured gemini-4-neon model and thought_level setting without independent backend identity verification.
+              </p>
+            </article>
+
+            <article class="panel method-card">
+              <h3>Pilot scope and exclusions</h3>
+              <p>
+                Each participant attempted the 10 English tasks once in fresh agent contexts using baseline prompts that state rules without suggesting a search strategy.
+                No independent repeats were run.
+              </p>
+              <p>
+                Russian tasks (ru-01 through ru-10) were not run and are excluded from all reported figures.
+                Single-trial results on 10 selected words carry substantial variance and do not establish a general model ranking.
+              </p>
+            </article>
+          </div>
+
+          <article class="panel panel-wide fingerprints-panel">
+            <div class="panel-head">
+              <h3>Canonical provenance</h3>
+              <span class="panel-meta">All four runs share identical dataset and protocol fingerprints</span>
+            </div>
+            <dl class="fingerprint-list">
+              <div>
+                <dt>Suite ID</dt>
+                <dd><code id="fp-suite-id"></code></dd>
+              </div>
+              <div>
+                <dt>Dataset SHA-256</dt>
+                <dd><code id="fp-dataset"></code></dd>
+              </div>
+              <div>
+                <dt>Protocol v3 SHA-256</dt>
+                <dd><code id="fp-protocol"></code></dd>
+              </div>
+              <div>
+                <dt>Canonical source</dt>
+                <dd>
+                  <a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/results/2026-11-23-neon-en/comparison.json" target="_blank" rel="noreferrer">results/2026-11-23-neon-en/comparison.json</a>
+                </dd>
+              </div>
+            </dl>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Results come from recorded benchmark events. Source data and methodology are available in the repository.
+      </p>
+      <p>
+        Code under MIT. Frozen rank tables under CC BY-SA 4.0 (ConceptNet Numberbatch 19.08 and wordfreq 3.1.1).
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

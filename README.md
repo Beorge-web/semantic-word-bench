@@ -25,6 +25,42 @@ These results cover only the English subset. Russian rounds were not run and are
 
 [Earlier Sol report and methodology](results/2026-11-23-sol-high-en/README.md)
 
+## Results dashboard
+
+A static results viewer in `site/` renders the canonical English pilot results from `results/2026-11-23-neon-en/comparison.json` and the checked-in audit records. It is a read-only static site with no backend, authentication, API keys, or live model calls. The optional interactive local game server in `web/` remains separate.
+
+Build and preview locally with Node or Bun:
+
+```sh
+node scripts/build-site.js
+node scripts/dev-site.js
+```
+
+Or via package scripts:
+
+```sh
+bun run build:site
+bun run preview:site
+```
+
+`build:site` writes the generated static bundle and derived `data/results.json` to `dist/`, which is ignored by Git. `preview:site` rebuilds `dist/` and serves it at http://127.0.0.1:4173 (override with `PORT`).
+
+### Deploy on Vercel
+
+Repository root includes `vercel.json` configured with:
+
+- Framework preset: Other (`"framework": null`)
+- Build command: `node scripts/build-site.js`
+- Output directory: `dist`
+
+To deploy from GitHub:
+
+1. Import this repository in Vercel with the repository root as the Root Directory.
+2. Keep the build settings from `vercel.json` (no environment variables or secrets are required).
+3. Deploy to publish the static results viewer.
+
+[Deploy with Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FBeorge-web%2Fsemantic-word-bench)
+
 ## Quick start
 
 Requires Bun 1.2.3 or newer.
