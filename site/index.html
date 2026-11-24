@@ -60,11 +60,12 @@
         </section>
 
         <section class="section" id="quality-section" aria-labelledby="quality-heading">
+          <article class="panel panel-wide overall-panel" aria-labelledby="overall-heading"><div class="panel-head"><div><p class="section-kicker">OVERALL RESULT</p><h2 id="overall-heading">Which model performed best?</h2></div><span class="overall-direction">Lower PAR2 is better</span></div><p class="overall-summary" id="overall-summary"></p><div class="inline-legend"><span><i class="proximity-key overall-attempts-key"></i>Model color: attempts in solved rounds</span><span><i class="proximity-key overall-failures"></i>Penalties for unsolved rounds</span></div><div id="chart-overall"></div><p class="panel-footnote" id="overall-method"></p><p class="panel-footnote">These are pilot results on a small task set. First place in this collection does not establish a general model ranking.</p></article>
           <details class="metric-details participant-overview"><summary>Participant overview cards</summary><div class="summary-grid" id="summary-cards"></div></details>
           <div class="section-head">
             <div>
               <p class="section-kicker">01 / QUALITY</p>
-              <h2 id="quality-heading">Solve rate and PAR2 attempts</h2>
+              <h2 id="quality-heading">Task outcomes and near hits</h2>
             </div>
             <p class="section-note">
               <span id="scoring-note">PAR2 averages solved attempts and failure penalties across the selected tasks.</span>
@@ -72,23 +73,13 @@
             </p>
           </div>
 
-          <div class="chart-pair">
-            <article class="panel">
-              <div class="panel-head">
-                <h3>PAR2 attempts</h3>
-                <span class="panel-meta">Lower is better</span>
-              </div>
-              <div class="chart-box" id="chart-par2"></div>
-            </article>
-
-            <article class="panel">
+            <article class="panel panel-wide">
               <div class="panel-head">
                 <h3>Words solved by task</h3>
                 <span class="panel-meta" id="tasks-note">Task count and attempt budget load with the collection.</span>
               </div>
               <div class="chart-box" id="chart-solved"></div>
             </article>
-          </div>
 
           <article class="panel panel-wide">
             <div class="panel-head">

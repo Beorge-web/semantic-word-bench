@@ -1,6 +1,16 @@
 import { test, expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { proximityAt, renderMetricBars, renderCheckpoints, comparisonCsv } from '../site/analytics.js';
+import { proximityAt, renderMetricBars, renderCheckpoints, comparisonCsv, overallRanking } from '../site/analytics.js';
+
+test('overall PAR2 ranking pools trials, retains tied ranks and ignores speed', () => {
+  const run = (model, id, solvedAttempts, speed = 1) => ({ model, id, short_label: model, provider: 'fixture', effort: 'high', track: 'cli', prompt_mode: 'baseline', metrics: { cycle_mean_ms: speed }, rounds: Object.fromEntries(solvedAttempts.map((attempts, index) => [String(index), { status: attempts === null ? 'exhausted' : 'solved', attempts: attempts ?? 50 }])) });
+  const rows = overallRanking({ par2_penalty: 100, runs: [run('a', 'a1', [10,null]), run('b', 'b', [15,null]), run('a', 'a2', [20,null]), run('c', 'c', [50,50], 900000)] });
+  expect(rows.map(row => [row.label, row.rank, row.par2])).toEqual([['c',1,50],['a',2,57.5],['b',2,57.5]]);
+  expect(rows[1].members).toEqual(['a1','a2']);
+  expect(rows[1].solved).toBe(2);
+  expect(rows[1].rounds).toBe(4);
+  expect(rows[1].solvedCost + rows[1].failureCost).toBe(rows[1].par2 * rows[1].rounds);
+});
 
 test('near hits are exclusive of exact wins and checkpoints exclude later guesses', () => {
   const run = { metrics: { rounds: 3 }, rounds: {

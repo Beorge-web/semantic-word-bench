@@ -48,6 +48,8 @@ A static results viewer in `site/` reads the collections declared in `results/ca
 
 The viewer has separate Quality, Speed, Search, Effort, Rounds, Datasets and Protocol views. Near-hit controls distinguish exact wins from additional top-k hits at attempts 10, 25 or the full budget. Search charts retain coverage counts and separate timing bases. The dataset catalog shows ready packs without inventing scores for unrun sets, alongside human and None baseline status. Round diagnostics, recorded versus untested effort settings, participant audit coverage and CLI commands are available in their corresponding views. CSV and JSON downloads include the complete selected collection, independent of model highlighting.
 
+Quality opens with an overall ranking by PAR2. Each bar separates attempts in solved rounds from failure penalties and shows exact wins alongside the total. Lower is better. Trials of the same model, provider, effort, service tier, interface and prompt mode are pooled; equal PAR2 scores share a rank. Speed and proximity do not enter the overall quality score.
+
 Build and preview locally with Node or Bun:
 
 ```sh

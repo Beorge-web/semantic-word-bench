@@ -1,5 +1,37 @@
 import { escapeHtml, formatNumber, formatRank, isRunActive } from './model.js';
 
+export function overallRanking(data) {
+  const groups = new Map();
+  for (const run of data.runs) {
+    const key = JSON.stringify([run.model, run.provider, run.effort, run.service_tier ?? null, run.track, run.prompt_mode]);
+    if (!groups.has(key)) groups.set(key, { label: run.short_label, color: run.color, members: [], rounds: 0, solved: 0, solvedCost: 0, failureCost: 0 });
+    const group = groups.get(key);
+    group.members.push(run.id);
+    for (const round of Object.values(run.rounds)) {
+      group.rounds++;
+      if (round.status === 'solved') { group.solved++; group.solvedCost += round.attempts; }
+      else group.failureCost += data.par2_penalty;
+    }
+  }
+  const rows = [...groups.values()].map(group => ({ ...group, totalCost: group.solvedCost + group.failureCost, par2: (group.solvedCost + group.failureCost) / group.rounds }));
+  rows.sort((a, b) => a.totalCost * b.rounds - b.totalCost * a.rounds || a.label.localeCompare(b.label));
+  let rank = 1;
+  return rows.map((row, index) => {
+    const previous = rows[index - 1];
+    if (previous && row.totalCost * previous.rounds !== previous.totalCost * row.rounds) rank = index + 1;
+    return { ...row, rank };
+  });
+}
+
+export function renderOverall(data, focused) {
+  return `<div class="overall-ranking">${overallRanking(data).map(row => `<div class="overall-row ${row.members.some(id => isRunActive(id, focused)) ? '' : 'is-dimmed'} ${row.rank === 1 ? 'is-leading' : ''}">
+    <span class="overall-place">${row.rank}</span><div class="overall-participant"><span>${escapeHtml(row.label)}</span><span class="table-sub">${row.solved}/${row.rounds} solved${row.members.length > 1 ? ` across ${row.members.length} trials` : ''}</span></div>
+    <div class="overall-track" role="img" aria-label="${escapeHtml(row.label)}: PAR2 ${formatNumber(row.par2, 2)}, solved-attempt contribution ${formatNumber(row.solvedCost / row.rounds, 2)}, failure-penalty contribution ${formatNumber(row.failureCost / row.rounds, 2)}. Lower is better.">
+      <span class="overall-attempts" style="width:${row.solvedCost / row.rounds / data.par2_penalty * 100}%;background:${row.color}"></span><span class="overall-failures" style="width:${row.failureCost / row.rounds / data.par2_penalty * 100}%"></span>
+    </div><span class="overall-score">${formatNumber(row.par2, 2)}<span class="table-sub">PAR2</span></span>
+  </div>`).join('')}<div class="overall-axis" aria-hidden="true"><span>0</span><span>${data.par2_penalty / 2}</span><span>${data.par2_penalty}</span></div></div>`;
+}
+
 export function proximityAt(run, threshold, budget) {
   let exact = 0, reached = 0;
   for (const round of Object.values(run.rounds)) {

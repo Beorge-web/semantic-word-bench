@@ -14,7 +14,7 @@ import {
   isRunActive,
   validateDataset,
 } from './model.js';
-import { renderProximity, renderCheckpoints, renderMetricBars, renderSolveUnits, thresholdMetric, comparisonCsv } from './analytics.js';
+import { renderProximity, renderCheckpoints, renderMetricBars, renderSolveUnits, thresholdMetric, comparisonCsv, overallRanking, renderOverall } from './analytics.js';
 
 const el = id => document.getElementById(id);
 
@@ -187,7 +187,11 @@ function renderSummaryCards(data) {
 }
 
 function renderQualitySection(data) {
-  el('chart-par2').innerHTML = renderMetricBars(data.runs, state.focusedIds, run => ({ value: run.metrics.par2, detail: `${run.metrics.solved}/${run.metrics.rounds} solved` }), data.par2_penalty, value => formatNumber(value, 1));
+  const ranking = overallRanking(data);
+  const leaders = ranking.filter(row => row.rank === 1);
+  el('overall-summary').textContent = `${leaders.map(row => row.label).join(' and ')} ${leaders.length === 1 ? 'leads' : 'share first place in'} this collection by PAR2. ${leaders.length === 1 ? `${leaders[0].solved}/${leaders[0].rounds} words solved, PAR2 ${formatNumber(leaders[0].par2, 2)}.` : 'Equal scores share the same rank.'}`;
+  el('chart-overall').innerHTML = renderOverall(data, state.focusedIds);
+  el('overall-method').textContent = `Sorted by PAR2, lower is better. Each solved round contributes its attempt count; each unsolved round contributes ${data.par2_penalty}. The total is divided by all rounds. Speed and near hits do not affect this ranking. Repeated trials of the same configuration are pooled.`;
   el('chart-solved').innerHTML = renderSolveUnits(data.runs, data.words, state.focusedIds);
   el('chart-attempts').innerHTML = renderAttemptsChart(data.runs, data.words, state.focusedIds, data.max_guesses);
   el('chart-proximity').innerHTML = renderProximity(data.runs, state.focusedIds, state.proximityThreshold, state.proximityBudget);
