@@ -36,7 +36,9 @@
         <div><dt>Runs</dt><dd id="meta-repeats">Loading...</dd></div>
         <div><dt>Recorded</dt><dd id="meta-date">Nov 23, 2026</dd></div>
       </dl>
-      <label class="dataset-selector">Dataset and embedding track<select id="dataset-select" aria-label="Dataset and embedding track"></select></label>
+      <label class="dataset-selector">Published results collection<select id="dataset-select" aria-label="Published results collection"></select></label>
+      <p class="panel-footnote">Each collection uses one frozen dataset and interface. <a href="#datasets-section">Browse all datasets and baseline status</a>.</p>
+      <div class="export-controls"><button type="button" class="reset-btn" id="download-csv">Download round metrics CSV</button><a id="download-json" href="./data/results.json" download>Download collection JSON</a></div>
     </header>
 
     <main id="main-content" tabindex="-1">
@@ -45,6 +47,9 @@
       </section>
 
       <div id="dashboard" hidden>
+        <nav class="section-navigation" role="tablist" aria-label="Results sections">
+          <button type="button" id="view-quality" role="tab" data-view="quality" aria-controls="quality-section" aria-selected="true">Quality</button><button type="button" id="view-speed" role="tab" data-view="speed" aria-controls="speed-section" aria-selected="false">Speed</button><button type="button" id="view-search" role="tab" data-view="search" aria-controls="search-section" aria-selected="false">Search</button><button type="button" id="view-effort" role="tab" data-view="effort" aria-controls="effort-section" aria-selected="false">Effort</button><button type="button" id="view-words" role="tab" data-view="words" aria-controls="words-section" aria-selected="false">Rounds</button><button type="button" id="view-datasets" role="tab" data-view="datasets" aria-controls="datasets-section" aria-selected="false">Datasets</button><button type="button" id="view-methodology" role="tab" data-view="methodology" aria-controls="methodology-section" aria-selected="false">Protocol</button>
+        </nav>
         <section class="controls-bar" aria-label="Model focus filter">
           <div class="controls-label">
             <span class="label-title">Highlight models</span>
@@ -54,12 +59,8 @@
           <button type="button" class="reset-btn" id="reset-filters" hidden>Show all</button>
         </section>
 
-        <section class="section" aria-labelledby="overview-heading">
-          <h2 id="overview-heading" class="sr-only">Participant summary</h2>
-          <div class="summary-grid" id="summary-cards"></div>
-        </section>
-
         <section class="section" id="quality-section" aria-labelledby="quality-heading">
+          <details class="metric-details participant-overview"><summary>Participant overview cards</summary><div class="summary-grid" id="summary-cards"></div></details>
           <div class="section-head">
             <div>
               <p class="section-kicker">01 / QUALITY</p>
@@ -92,10 +93,10 @@
           <article class="panel panel-wide">
             <div class="panel-head">
               <h3>Attempts needed for each word</h3>
-              <span class="panel-meta">Lower is better. Each bar uses the same 0-50 scale.</span>
+              <span class="panel-meta" id="attempts-scale-note"></span>
             </div>
             <div id="chart-attempts"></div>
-            <p class="panel-footnote">Numbers show attempts until the exact answer. Fail means the word was not found within 50 attempts. A win on attempt 50 still counts as solved.</p>
+            <p class="panel-footnote" id="attempts-budget-note"></p>
           </article>
 
           <article class="panel panel-wide">
@@ -103,14 +104,18 @@
               <h3>Rounds reaching top k</h3>
               <span class="panel-meta">Secondary proximity measure. Higher is better.</span>
             </div>
-            <div class="table-wrap"><table class="data-table">
+            <div class="analysis-controls"><label>Near-hit threshold<select id="proximity-threshold"><option value="2">Top 2</option><option value="10">Top 10</option><option value="100" selected>Top 100</option><option value="1000">Top 1,000</option></select></label><label>Attempt checkpoint<select id="proximity-budget"></select></label></div>
+            <div class="inline-legend"><span><i class="proximity-key proximity-exact"></i>Exact answer</span><span><i class="proximity-key proximity-near"></i>Near hit without the exact answer</span><span><i class="proximity-key proximity-missed"></i>Outside threshold</span></div>
+            <div id="chart-proximity" aria-live="polite"></div>
+            <details class="metric-details"><summary>All top-k counts at the full budget</summary><div class="table-wrap"><table class="data-table">
               <thead><tr><th scope="col">Model</th><th scope="col" class="num">Exact</th><th scope="col" class="num">Top 2</th><th scope="col" class="num">Top 10</th><th scope="col" class="num">Top 100</th><th scope="col" class="num">Top 1,000</th></tr></thead>
               <tbody id="proximity-table-body"></tbody>
-            </table></div>
+            </table></div></details>
             <p class="panel-footnote">Hit@k counts rounds where the best guess reached rank k or better, including exact wins. A nearby guess is not an exact answer. These counts do not change the solve rate or PAR2.</p>
           </article>
 
-          <article class="panel panel-wide">
+          <details class="panel panel-wide metric-details">
+            <summary>Quality metrics and submission counts</summary>
             <div class="panel-head">
               <h3>Quality metrics summary</h3>
               <span class="panel-meta">Computed directly from canonical events</span>
@@ -133,7 +138,7 @@
                 <tbody id="quality-table-body"></tbody>
               </table>
             </div>
-          </article>
+          </details>
         </section>
 
         <section class="section" id="speed-section" aria-labelledby="speed-heading">
@@ -156,8 +161,9 @@
 
           <article class="panel panel-wide">
             <div class="panel-head">
-              <h3>Cycle distribution: mean, median, IQR (P25-P75), and P10-P90</h3>
-              <div class="inline-legend" aria-hidden="true">
+              <h3 id="speed-chart-heading">Interaction cycle</h3>
+              <label class="compact-selector">Measure<select id="speed-metric"><option value="mean">Mean</option><option value="median">Median</option><option value="p90">P90</option><option value="max">Maximum</option><option value="distribution">Distribution and outliers</option></select></label>
+              <div class="inline-legend" id="speed-legend" aria-hidden="true">
                 <span><i class="swatch swatch-diamond"></i>Mean</span>
                 <span><i class="swatch swatch-tick"></i>Median</span>
                 <span><i class="swatch swatch-iqr"></i>P25-P75</span>
@@ -165,10 +171,12 @@
               </div>
             </div>
             <div class="chart-box" id="chart-speed"></div>
+            <div id="chart-speed-summary"></div>
             <p class="panel-footnote" id="speed-footnote"></p>
           </article>
 
-          <article class="panel panel-wide">
+          <details class="panel panel-wide metric-details">
+            <summary>Interaction cycle statistics and sample counts</summary>
             <div class="panel-head">
               <h3>Interaction cycle statistics</h3>
               <span class="panel-meta">Pooled across all recorded non-initial CLI results</span>
@@ -190,20 +198,25 @@
                 <tbody id="speed-table-body"></tbody>
               </table>
             </div>
-          </article>
+          </details>
         </section>
 
         <section class="section" id="search-section" aria-labelledby="search-heading">
           <div class="section-head"><div><p class="section-kicker">SEARCH TRAJECTORY</p><h2 id="search-heading">Progress, stagnation and resource use</h2></div>
             <p class="section-note">Checkpoint ranks are medians across scored rounds. Threshold steps include only rounds that reached the threshold.</p>
           </div>
-          <article class="panel"><div class="table-wrap"><table class="data-table">
+          <article class="panel panel-wide"><div class="panel-head"><h3>How close does the search get?</h3><span class="panel-meta">Median best rank at fixed checkpoints</span></div><div class="chart-box" id="chart-checkpoints"></div><p class="panel-footnote">The rank axis is logarithmic. Rank 1 is the target. Checkpoints after an early win stay at rank 1. Hover a point for scored-round coverage. Highlight a participant above to isolate its line.</p></article>
+          <div class="chart-pair">
+            <article class="panel"><div class="panel-head"><h3>Reach the semantic region</h3><label class="compact-selector">Threshold<select id="search-threshold"><option value="100" selected>Top 100</option><option value="10">Top 10</option><option value="1000">Top 1,000</option></select></label></div><div id="chart-threshold"></div><p class="panel-footnote">Bar length shows the share of rounds reaching the threshold. Median attempts include reached rounds only.</p></article>
+            <article class="panel"><div class="panel-head"><h3>Search behaviour</h3><label class="compact-selector">Measure<select id="behaviour-metric"><option value="stagnation">Median longest stagnation</option><option value="repeats">Repeat rate</option></select></label></div><div id="chart-behaviour"></div><p class="panel-footnote">Lower is better. A stagnation step is a guess without a strict improvement, including ties and invalid guesses. Repeat rate uses all submitted guesses.</p></article>
+          </div>
+          <details class="panel metric-details"><summary>Checkpoint, threshold and behaviour values</summary><div class="table-wrap"><table class="data-table">
             <thead><tr><th>Model</th><th>Best rank @10</th><th>Best rank @25</th><th>Best rank @50</th><th>Steps to top 100</th><th>Steps to top 10</th><th>Median longest stagnation</th><th>Repeat rate</th></tr></thead>
             <tbody id="search-table-body"></tbody>
-          </table></div><p class="panel-footnote">An early win stays at rank 1 at later checkpoints. Unobserved checkpoints stay missing. Stagnation counts consecutive submissions without a strict best-rank improvement, including ties and invalid guesses.</p></article>
-          <article class="panel panel-wide"><div class="panel-head"><h3>Round duration and time to solve</h3></div><div class="table-wrap"><table class="data-table">
+          </table></div><p class="panel-footnote">Unobserved checkpoints stay missing. Coverage counts accompany each checkpoint.</p></details>
+          <article class="panel panel-wide"><div class="panel-head"><h3>Round duration and time to solve</h3><label class="compact-selector">Time basis<select id="duration-metric"><option value="observed">Observed round duration</option><option value="agent">Full agent round duration</option><option value="solve-agent">Agent start to exact answer</option><option value="solve-observed">First submission to exact answer</option></select></label></div><p class="panel-footnote" id="duration-basis-note"></p><div id="chart-duration"></div><details class="metric-details"><summary>All timing bases and coverage</summary><div class="table-wrap"><table class="data-table">
             <thead><tr><th>Model</th><th>Mean observed play duration</th><th>Mean full agent duration</th><th>Mean agent start to win</th><th>Mean first submission to win</th></tr></thead><tbody id="duration-table-body"></tbody>
-          </table></div><p class="panel-footnote">Observed play excludes thinking before the first submission. Agent timing is used only when the audit covers the complete round. The two solve-time bases remain separate. Unsolved rounds have no time to solve.</p></article>
+          </table></div></details><p class="panel-footnote">Agent timing is used only when the audit covers the complete round. Unsolved rounds have no time to solve. Missing timing is never plotted as zero.</p></article>
           <article class="panel panel-wide"><h3>Tokens and cost</h3><p class="panel-footnote" id="resource-status"></p>
             <div id="resource-records" class="table-wrap" hidden><table class="data-table"><thead><tr><th>Model</th><th>Input tokens</th><th>Cached input tokens</th><th>Output tokens</th><th>Reasoning tokens</th><th>Total tokens</th><th>Measured cost</th></tr></thead><tbody id="resource-table-body"></tbody></table></div>
           </article>
@@ -214,6 +227,7 @@
           <article class="panel"><div id="effort-controls" class="panel-head"><label class="dataset-selector">Model and provider<select id="effort-select"></select></label><div class="tab-group" role="group" aria-label="Effort comparison metric">
             <button type="button" class="log-tab" data-effort-metric="solve_rate" aria-pressed="true">Solve rate</button><button type="button" class="log-tab" data-effort-metric="par2" aria-pressed="false">PAR2</button><button type="button" class="log-tab" data-effort-metric="cycle_mean_ms" aria-pressed="false">Mean cycle</button>
           </div></div><p class="panel-footnote" id="effort-empty" hidden>At least two effort settings from the same model and provider are required. Unmeasured settings have no score.</p><div class="table-wrap" id="chart-effort"></div><p class="panel-footnote">Repeated trials are weighted by round count for quality and cycle count for mean cycle duration. Dates and provider conditions can still differ.</p></article>
+          <details class="panel metric-details"><summary>Recorded and untested reasoning settings</summary><p class="panel-footnote">A recorded cell is a completed participant run on this collection. Other declared settings have no score. Availability comes from the saved experiment configuration, not a live provider check.</p><div class="table-wrap"><table class="data-table effort-matrix"><thead id="effort-matrix-head"></thead><tbody id="effort-matrix-body"></tbody></table></div></details>
         </section>
 
         <section class="section" id="words-section" aria-labelledby="words-heading">
@@ -261,6 +275,7 @@
               </div>
               <p class="panel-footnote">The rank axis is logarithmic. Missing ranks create gaps. Best-so-far can only improve; every-guess shows unsuccessful probes as well.</p>
               <div class="chart-box" id="chart-trajectory"></div>
+              <div id="round-diagnostics" class="round-diagnostics"></div>
             </div>
 
             <div class="inspector-log-block">
@@ -288,6 +303,13 @@
               </div>
             </div>
           </article>
+        </section>
+
+        <section class="section" id="datasets-section" aria-labelledby="datasets-heading">
+          <div class="section-head"><div><p class="section-kicker">DATASETS AND BASELINES</p><h2 id="datasets-heading">What has been tested?</h2></div><p class="section-note">Dataset versions and embedding spaces remain separate. An available dataset with no trials has no model scores.</p></div>
+          <div id="dataset-cards" class="dataset-cards"></div>
+          <div class="baseline-grid" id="baseline-cards"></div>
+          <p class="panel-footnote" id="copy-status" role="status" aria-live="polite"></p>
         </section>
 
         <section class="section" id="methodology-section" aria-labelledby="methodology-heading">
@@ -318,7 +340,7 @@
               <h3>Timing measurement</h3>
               <p>
                 Interaction cycle time is the elapsed interval between consecutive CLI results in the same round, excluding the first result of each round.
-                Every submission launched a fresh Bun CLI process and loaded the rank table.
+                Client startup, data loading and network time depend on the recorded interface. The published English pilot launched a fresh Bun CLI process for each submission.
               </p>
               <p>
                 Cycles bundle model reasoning, agent orchestration, process startup, and data loading.
@@ -331,10 +353,7 @@
               <p id="audit-summary-text">
                 Audit metadata is loaded with the selected task set.
               </p>
-              <p>
-                Codex transcripts reported executedModel for the published Sol and Astra runs.
-                Antigravity did not report executedModel for Neon, so the Neon audit verifies the configured gemini-4-neon model and thought_level setting without independent backend identity verification.
-              </p>
+              <p id="identity-summary"></p>
             </article>
 
             <article class="panel method-card">
@@ -349,6 +368,8 @@
               </p>
             </article>
           </div>
+
+          <details class="panel metric-details"><summary>Participant settings and audit coverage</summary><div class="table-wrap"><table class="data-table"><thead><tr><th>Participant</th><th>Provider</th><th>Effort</th><th>Service tier</th><th>Interface</th><th>Audited rounds</th><th>Executed model</th></tr></thead><tbody id="participant-settings"></tbody></table></div></details>
 
           <article class="panel panel-wide fingerprints-panel">
             <div class="panel-head">
@@ -383,7 +404,7 @@
         Results come from recorded benchmark events. Source data and methodology are available in the repository.
       </p>
       <p>
-        Code under MIT. Frozen rank tables under CC BY-SA 4.0 (ConceptNet Numberbatch 19.08 and wordfreq 3.1.1).
+        Code under MIT. Dataset manifests record embedding sources, versions and licenses. See the repository for attribution.
       </p>
     </footer>
   </div>

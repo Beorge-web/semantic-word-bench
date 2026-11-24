@@ -1,8 +1,6 @@
 import {
   renderAttemptsChart,
-  renderPar2Chart,
   renderRoundTrajectoryChart,
-  renderSolvedUnitChart,
   renderSpeedDistributionChart,
 } from './charts.js';
 import {
@@ -16,6 +14,7 @@ import {
   isRunActive,
   validateDataset,
 } from './model.js';
+import { renderProximity, renderCheckpoints, renderMetricBars, renderSolveUnits, thresholdMetric, comparisonCsv } from './analytics.js';
 
 const el = id => document.getElementById(id);
 
@@ -28,6 +27,15 @@ const state = {
   collections: [],
   effortGroup: null,
   effortMetric: 'solve_rate',
+  catalog: null,
+  proximityThreshold: 100,
+  proximityBudget: 50,
+  searchThreshold: 100,
+  behaviourMetric: 'stagnation',
+  durationMetric: 'observed',
+  datasetRequest: 0,
+  view: 'quality',
+  speedMetric: 'mean',
 };
 
 function keepFocus(update) {
@@ -79,6 +87,10 @@ function renderMetadata(data) {
   el('canonical-sources').innerHTML = (data.generated_from ?? []).map(path => `<a href="https://github.com/Beorge-web/semantic-word-bench/blob/main/${escapeHtml(path)}" target="_blank" rel="noreferrer">${escapeHtml(path)}</a>`).join('<br>');
   el('scoring-note').textContent = `PAR2 assigns ${data.par2_penalty} attempts to each unsolved round, then averages across all ${data.words.length} words. Lower is better.`;
   el('tasks-note').textContent = `${data.words.length} tasks, ${data.max_guesses}-guess limit each`;
+  el('attempts-scale-note').textContent = `Lower is better. Shared 0-${data.max_guesses} attempt scale.`;
+  el('attempts-budget-note').textContent = `Numbers show attempts until the exact answer. Fail means no exact answer within ${data.max_guesses} attempts. A win on the final attempt counts as solved.`;
+  el('identity-summary').textContent = data.runs.filter(run => !run.executed_model_verified && run.participant_type !== 'human').map(run => `${run.label}: configured model recorded; executed model identity not independently reported.`).join(' ') || 'Executed model identity is recorded for every model participant in this collection.';
+  el('participant-settings').innerHTML = data.runs.map(run => `<tr><th scope="row">${escapeHtml(run.label)}</th><td>${escapeHtml(run.provider_display)}</td><td>${escapeHtml(run.effort)}</td><td>${escapeHtml(run.service_tier ?? 'Not reported')}</td><td>${escapeHtml(run.track)}</td><td>${run.audited_rounds}/${run.metrics.rounds}</td><td>${run.participant_type === 'human' ? 'Human participant' : run.executed_model_verified ? 'Verified in audit' : 'Not reported'}</td></tr>`).join('');
 
   if (data.audit) {
     el('audit-summary-text').textContent =
@@ -175,9 +187,10 @@ function renderSummaryCards(data) {
 }
 
 function renderQualitySection(data) {
-  el('chart-par2').innerHTML = renderPar2Chart(data.runs, state.focusedIds, data.max_guesses, data.par2_penalty);
-  el('chart-solved').innerHTML = renderSolvedUnitChart(data.runs, data.words, state.focusedIds);
+  el('chart-par2').innerHTML = renderMetricBars(data.runs, state.focusedIds, run => ({ value: run.metrics.par2, detail: `${run.metrics.solved}/${run.metrics.rounds} solved` }), data.par2_penalty, value => formatNumber(value, 1));
+  el('chart-solved').innerHTML = renderSolveUnits(data.runs, data.words, state.focusedIds);
   el('chart-attempts').innerHTML = renderAttemptsChart(data.runs, data.words, state.focusedIds, data.max_guesses);
+  el('chart-proximity').innerHTML = renderProximity(data.runs, state.focusedIds, state.proximityThreshold, state.proximityBudget);
   el('proximity-table-body').innerHTML = data.runs.map(run => `<tr class="${isRunActive(run.id, state.focusedIds) ? '' : 'is-dimmed'}">
     <th scope="row"><span class="model-cell"><span class="model-dot" style="--model-color:${run.color}" aria-hidden="true"></span>${escapeHtml(run.short_label)}</span></th>
     ${[1, 2, 10, 100, 1000].map(k => `<td class="num">${run.metrics.hits_at_k[k]}/${run.metrics.rounds}</td>`).join('')}
@@ -211,6 +224,13 @@ function renderQualitySection(data) {
 
 function renderSpeedSection(data) {
   el('chart-speed').innerHTML = renderSpeedDistributionChart(data.runs, state.focusedIds);
+  const distribution = state.speedMetric === 'distribution';
+  el('chart-speed').hidden = !distribution;
+  el('speed-legend').hidden = !distribution;
+  el('chart-speed-summary').hidden = distribution;
+  const key = `cycle_${state.speedMetric}_ms`;
+  el('speed-chart-heading').textContent = distribution ? 'Cycle distribution' : `${({ mean: 'Mean', median: 'Median', p90: 'P90', max: 'Maximum' })[state.speedMetric]} interaction cycle`;
+  if (!distribution) el('chart-speed-summary').innerHTML = renderMetricBars(data.runs, state.focusedIds, run => ({ value: run.metrics[key], detail: `${formatInt(run.metrics.cycle_count)} measured cycles` }), Math.max(...data.runs.map(run => run.metrics[key] ?? 0), 1), value => formatSeconds(value));
 
   const extremeOutliers = data.runs
     .flatMap(run =>
@@ -249,6 +269,21 @@ function renderSpeedSection(data) {
 }
 
 function renderSearchSection(data) {
+  el('chart-checkpoints').innerHTML = renderCheckpoints(data.runs, state.focusedIds, data.vocabulary_size, el('chart-checkpoints').clientWidth || 920);
+  el('chart-threshold').innerHTML = renderMetricBars(data.runs, state.focusedIds, run => thresholdMetric(run, state.searchThreshold), 1, value => `${formatNumber(value * 100, 0)}%`);
+  const repeats = state.behaviourMetric === 'repeats';
+  el('chart-behaviour').innerHTML = renderMetricBars(data.runs, state.focusedIds, run => ({ value: repeats ? run.search.repeat_rate : run.search.longest_stagnation_median, detail: repeats ? `${formatInt(run.metrics.submissions)} submissions` : `longest per-round sequence; ${run.metrics.rounds} rounds` }), repeats ? 1 : data.max_guesses, value => repeats ? `${formatNumber(value * 100, 1)}%` : `${formatNumber(value, 1)} guesses`);
+  const duration = run => {
+    const search = run.search;
+    if (state.durationMetric === 'observed') return { value: search.observed_duration_mean_ms, detail: `${Object.values(run.rounds).filter(round => round.search.observed_duration_ms !== null).length}/${search.rounds} rounds observed` };
+    if (state.durationMetric === 'agent') return { value: search.agent_duration_mean_ms, detail: `${search.agent_timing_rounds}/${search.rounds} rounds covered by audit timing` };
+    const basis = state.durationMetric === 'solve-agent' ? 'agent_start_to_winning_result' : 'first_submission_to_winning_result';
+    const time = search.solve_time_by_basis[basis];
+    return { value: time.mean_ms, detail: `${time.rounds} solved rounds with this timing basis` };
+  };
+  const notes = { observed: 'Mean time from first submission to last recorded result across observed rounds. Includes unsolved rounds. Excludes thinking before the first guess.', agent: 'Mean agent start-to-completion duration across rounds with complete audit timestamps. Includes unsolved rounds.', 'solve-agent': 'Mean time from audited agent start to the winning result. Solved rounds only. Other timing bases are excluded.', 'solve-observed': 'Mean time from first submission to the winning result when complete agent timing is unavailable. Solved rounds only.' };
+  el('duration-basis-note').textContent = notes[state.durationMetric];
+  el('chart-duration').innerHTML = renderMetricBars(data.runs, state.focusedIds, duration, Math.max(...data.runs.map(run => duration(run).value ?? 0), 1), value => formatSeconds(value, 1));
   const stepText = (search, k) => {
     const step = search.steps_to_top[k];
     return `${step.reached}/${step.total} reached<br><span class="table-sub">${step.median === null ? 'not reached' : `median ${formatNumber(step.median, 1)} attempts`}</span>`;
@@ -288,6 +323,13 @@ function renderSearchSection(data) {
 
 function renderEffortSection(data) {
   const groups = data.effort_comparisons ?? [];
+  const settings = ['none', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'];
+  const profiles = state.catalog.participant_profiles;
+  el('effort-matrix-head').innerHTML = `<tr><th>Model / provider</th>${settings.map(setting => `<th>${escapeHtml(setting)}</th>`).join('')}</tr>`;
+  el('effort-matrix-body').innerHTML = profiles.map(profile => `<tr><th scope="row">${escapeHtml(profile.model)}<span class="table-sub">${escapeHtml(profile.provider)}</span></th>${settings.map(setting => {
+    const count = data.runs.filter(run => run.model === profile.model && run.provider === profile.provider && run.effort === setting).length;
+    return `<td><span class="setting-state ${count ? 'is-recorded' : ''}">${count ? `${count} recorded` : profile.supported_efforts.includes(setting) ? 'Not run' : 'Not declared'}</span></td>`;
+  }).join('')}</tr>`).join('');
   const eligible = groups.filter(group => group.efforts.length > 1);
   const group = eligible.find(group => group.id === state.effortGroup) ?? eligible[0];
   state.effortGroup = group?.id ?? null;
@@ -384,6 +426,8 @@ function renderInspector(data) {
   const word = data.words.find(w => w.id === state.selectedWordId) || data.words[0];
   const run = data.runs.find(r => r.id === state.selectedRunId) || data.runs[0];
   const round = run.rounds[word.id];
+  const search = round.search;
+  el('round-diagnostics').innerHTML = `<dl>${[['Best rank @10', formatRank(search.best_rank_at[10])], ['Best rank @25', formatRank(search.best_rank_at[25])], ['Best rank @50', formatRank(search.best_rank_at[50])], ['First top 100', search.steps_to_top[100] === null ? 'Not reached' : `Attempt ${search.steps_to_top[100]}`], ['First top 10', search.steps_to_top[10] === null ? 'Not reached' : `Attempt ${search.steps_to_top[10]}`], ['Longest stagnation', `${search.longest_stagnation} guesses`], ['Repeat rate', search.repeat_rate === null ? 'Not available' : `${formatNumber(search.repeat_rate * 100, 1)}%`], ['Observed duration', formatSeconds(search.observed_duration_ms, 1)]].map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
 
   el('inspector-heading').textContent = `${word.id}: ${word.answer}`;
   el('inspector-summary').textContent =
@@ -477,8 +521,66 @@ function renderAll() {
   renderInspector(data);
 }
 
+function setView(view, updateUrl = true) {
+  const button = [...document.querySelectorAll('[data-view]')].find(button => button.dataset.view === view) ?? document.querySelector('[data-view="quality"]');
+  view = button.dataset.view;
+  state.view = view;
+  document.querySelectorAll('[data-view]').forEach(tab => {
+    const selected = tab.dataset.view === view;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    const panel = el(tab.getAttribute('aria-controls'));
+    panel.hidden = !selected;
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', tab.id);
+  });
+  document.querySelector('.controls-bar').hidden = ['datasets', 'methodology'].includes(view);
+  if (view === 'search' && state.data) renderSearchSection(state.data);
+  if (updateUrl) {
+    history.replaceState(null, '', `#${view}-section`);
+    document.querySelector('.section-navigation').scrollIntoView({ block: 'start' });
+  }
+}
+
+function renderDatasetCatalog() {
+  const repo = 'https://github.com/Beorge-web/semantic-word-bench/blob/main/';
+  el('dataset-cards').innerHTML = state.catalog.datasets.map((dataset, index) => {
+    const command = `bun cli.js --suite ${dataset.directory} create --model MODEL --provider PROVIDER --effort EFFORT`;
+    return `<article class="panel dataset-card"><div class="panel-head"><h3>${escapeHtml(dataset.title)}</h3><span class="setting-state ${dataset.completed_runs ? 'is-recorded' : ''}">${dataset.completed_runs ? `${dataset.completed_runs} completed runs` : 'Ready, no trials'}</span></div>
+      <p class="dataset-track">${escapeHtml(dataset.track)}</p><p>${escapeHtml(dataset.note)}</p>
+      <ul class="dataset-language-list">${dataset.languages.map(language => `<li>${language.language.toUpperCase()}: ${language.rounds} tasks, ${formatInt(language.vocabulary_size)} accepted words</li>`).join('')}</ul>
+      <p class="panel-footnote">Budget: ${dataset.max_guesses} submissions per round. ${dataset.completed_runs ? 'Published scopes: ' + state.collections.filter(collection => dataset.collections.includes(collection.id)).map(collection => collection.scope.toUpperCase()).join(', ') + '.' : 'No quality or speed score exists for this dataset.'}</p>
+      <div class="dataset-actions">${dataset.collections.map(id => `<button type="button" class="reset-btn" data-open-collection="${escapeHtml(id)}">View results</button>`).join('')}<a href="${repo}${escapeHtml(dataset.directory)}/manifest.json" target="_blank" rel="noreferrer">Manifest</a></div>
+      <details class="metric-details"><summary>Version and CLI command</summary><p class="panel-footnote">${escapeHtml(dataset.embedding)}</p><code class="fingerprint-code">${dataset.fingerprint}</code><pre><code id="dataset-command-${index}">${escapeHtml(command)}</code></pre><button type="button" class="reset-btn" data-copy-command="dataset-command-${index}">Copy command</button></details></article>`;
+  }).join('');
+  const humans = state.data.runs.filter(run => run.participant_type === 'human').length;
+  const none = state.data.runs.filter(run => run.participant_type !== 'human' && run.effort === 'none').length;
+  el('baseline-cards').innerHTML = `<article class="panel"><h3>Human baseline</h3><p class="setting-state ${humans ? 'is-recorded' : ''}">${humans ? `${humans} recorded runs in this collection` : 'Workflow ready, no human trials in this collection'}</p><p>People use the same rank feedback and attempt budget. A person who has seen the public answers needs a fresh task set.</p><a href="${repo}docs/experiments.md#human-baseline" target="_blank" rel="noreferrer">Run a human trial</a></article>
+    <article class="panel"><h3>No extended thinking</h3><p class="setting-state ${none ? 'is-recorded' : ''}">${none ? `${none} recorded runs in this collection` : 'No model trials with None in this collection'}</p><p>A None baseline requires a provider that supports disabling extended thinking. Low is a different setting. The saved Astra configuration has no None option.</p><a href="#effort-section">See recorded and untested settings</a></article>
+    <article class="panel"><h3>Additional embedding tracks</h3><p>Word2Vec binary, GloVe and FastText text, and precomputed modern vectors can be imported. Word2Vec has no published frozen pack or model trials here.</p><a href="${repo}docs/datasets.md" target="_blank" rel="noreferrer">Create an independent track</a></article>`;
+}
+
 function bindEvents() {
   document.addEventListener('click', event => {
+    const viewButton = event.target.closest('[data-view]');
+    if (viewButton) { setView(viewButton.dataset.view); return; }
+    const sectionLink = event.target.closest('a[href^="#"]');
+    const targetView = sectionLink?.getAttribute('href').match(/^#([a-z]+)-section$/)?.[1];
+    if (targetView) { event.preventDefault(); setView(targetView); document.querySelector('.section-navigation').scrollIntoView(); return; }
+    const copy = event.target.closest('[data-copy-command]');
+    if (copy) {
+      if (!navigator.clipboard) { el('copy-status').textContent = 'Select the command text to copy it.'; return; }
+      navigator.clipboard.writeText(el(copy.dataset.copyCommand).textContent).then(() => { el('copy-status').textContent = 'Command copied.'; }).catch(() => { el('copy-status').textContent = 'Copy is unavailable. Select the command text to copy it.'; });
+      return;
+    }
+    const collectionButton = event.target.closest('[data-open-collection]');
+    if (collectionButton) {
+      el('dataset-select').value = collectionButton.dataset.openCollection;
+      el('dataset-select').dispatchEvent(new Event('change'));
+      setView('quality');
+      document.querySelector('.section-navigation').scrollIntoView();
+      return;
+    }
     const effortBtn = event.target.closest('[data-effort-metric]');
     if (effortBtn) {
       state.effortMetric = effortBtn.dataset.effortMetric;
@@ -499,6 +601,7 @@ function bindEvents() {
 
     const cellBtn = event.target.closest('[data-select-word], [data-select-run]');
     if (cellBtn) {
+      if (cellBtn.hasAttribute('data-inspect-round')) setView('words');
       let changed = false;
       if (cellBtn.dataset.selectWord && cellBtn.dataset.selectWord !== state.selectedWordId) {
         state.selectedWordId = cellBtn.dataset.selectWord;
@@ -514,6 +617,7 @@ function bindEvents() {
           renderInspector(state.data);
         });
       }
+      if (cellBtn.hasAttribute('data-inspect-round') || cellBtn.closest('#matrix-body')) el('round-inspector').scrollIntoView({ block: 'start' });
     }
   });
 
@@ -521,10 +625,20 @@ function bindEvents() {
     state.focusedIds.clear();
     renderAll();
   });
+  el('download-csv').addEventListener('click', () => {
+    if (!state.data) return;
+    const url = URL.createObjectURL(new Blob(['\uFEFF', comparisonCsv(state.data)], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = `${state.data.collection_id}-rounds.csv`;
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
   el('effort-select').addEventListener('change', event => {
     state.effortGroup = event.target.value;
     renderEffortSection(state.data);
   });
+  for (const [id, key, render] of [['proximity-threshold', 'proximityThreshold', renderQualitySection], ['proximity-budget', 'proximityBudget', renderQualitySection], ['search-threshold', 'searchThreshold', renderSearchSection], ['behaviour-metric', 'behaviourMetric', renderSearchSection], ['duration-metric', 'durationMetric', renderSearchSection], ['speed-metric', 'speedMetric', renderSpeedSection]]) {
+    el(id).addEventListener('change', event => { state[key] = ['behaviourMetric', 'durationMetric', 'speedMetric'].includes(key) ? event.target.value : Number(event.target.value); render(state.data); });
+  }
   el('dataset-select').addEventListener('change', async event => {
     const entry = state.collections.find(entry => entry.id === event.target.value);
     if (!entry) return;
@@ -549,15 +663,28 @@ function bindEvents() {
     const updatedTab = el('log-model-tabs').querySelector(`[data-select-run="${CSS.escape(state.selectedRunId)}"]`);
     if (updatedTab) updatedTab.focus();
   });
+  document.querySelector('.section-navigation').addEventListener('keydown', event => {
+    const tabs = [...document.querySelectorAll('[data-view]')];
+    const index = tabs.indexOf(document.activeElement);
+    if (index < 0) return;
+    const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index - 1 + tabs.length) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
+    if (next === null) return;
+    event.preventDefault(); setView(tabs[next].dataset.view); tabs[next].focus();
+  });
+  window.addEventListener('hashchange', () => setView(location.hash.match(/^#([a-z]+)-section$/)?.[1] ?? 'quality', false));
+  window.addEventListener('resize', () => { if (state.data && state.view === 'search') renderSearchSection(state.data); });
 }
 
 async function loadDataset(file) {
+    const request = ++state.datasetRequest;
     if (!/^[a-z0-9][a-z0-9.-]*\.json$/.test(file)) throw new Error('Invalid dataset file');
     const response = await fetch(`./data/${file}`, { cache: 'no-cache', headers: { accept: 'application/json' } });
+    if (request !== state.datasetRequest) return;
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} while loading canonical results.`);
     }
     const payload = await response.json();
+    if (request !== state.datasetRequest) return;
     const check = validateDataset(payload);
     if (!check.ok) {
       showStatus(check.reason, true);
@@ -565,15 +692,21 @@ async function loadDataset(file) {
     }
 
     state.data = payload;
+    el('download-json').href = `./data/${file}`;
+    el('download-json').download = `${payload.collection_id}.json`;
     state.focusedIds.clear();
     state.effortGroup = null;
+    state.proximityBudget = payload.max_guesses;
+    el('proximity-budget').innerHTML = [...new Set([10, 25, payload.max_guesses].filter(n => n <= payload.max_guesses))].map(n => `<option value="${n}" ${n === payload.max_guesses ? 'selected' : ''}>After ${n} attempts</option>`).join('');
     state.selectedWordId = payload.words[0].id;
     state.selectedRunId = payload.runs[1]?.id || payload.runs[0].id;
 
     renderMetadata(payload);
     renderAll();
+    renderDatasetCatalog();
     el('status-region').hidden = true;
     el('dashboard').hidden = false;
+    setView(state.view, false);
 }
 
 async function init() {
@@ -582,6 +715,8 @@ async function init() {
     const response = await fetch('./data/catalog.json', { cache: 'no-cache' });
     if (!response.ok) throw new Error(`HTTP ${response.status} while loading the dataset catalog.`);
     const catalog = await response.json();
+    state.catalog = catalog;
+    state.view = location.hash.match(/^#([a-z]+)-section$/)?.[1] ?? 'quality';
     state.collections = catalog.collections;
     const selected = state.collections.find(entry => entry.id === catalog.default);
     if (!selected) throw new Error('The default dataset is not in the catalog.');

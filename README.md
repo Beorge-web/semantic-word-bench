@@ -46,6 +46,8 @@ Hit@2 and Hit@10 add no near misses in these completed trials. Hit@100 includes 
 
 A static results viewer in `site/` reads the collections declared in `results/catalog.json` and their checked-in audit records. Each collection keeps its own dataset, embedding track, language scope, prompt mode and interface. The dashboard includes exact wins, PAR2, top-k proximity, per-word attempts, interaction cycle distributions, checkpoint ranks, threshold steps, stagnation, repeats, raw and best-rank trajectories, solve durations and within-model effort comparisons. Tokens and costs appear only with measured coverage. The optional local game server in `web/` remains separate.
 
+The viewer has separate Quality, Speed, Search, Effort, Rounds, Datasets and Protocol views. Near-hit controls distinguish exact wins from additional top-k hits at attempts 10, 25 or the full budget. Search charts retain coverage counts and separate timing bases. The dataset catalog shows ready packs without inventing scores for unrun sets, alongside human and None baseline status. Round diagnostics, recorded versus untested effort settings, participant audit coverage and CLI commands are available in their corresponding views. CSV and JSON downloads include the complete selected collection, independent of model highlighting.
+
 Build and preview locally with Node or Bun:
 
 ```sh

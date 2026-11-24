@@ -1,5 +1,11 @@
 {
   "default": "numberbatch-v1-en",
+  "datasets": [
+    { "directory": "data", "title": "Numberbatch v1", "track": "numberbatch-19.08", "note": "Original paired task set. Published pilot results cover English." },
+    { "directory": "datasets/numberbatch-20261124", "title": "Numberbatch fresh words", "track": "numberbatch-19.08", "note": "Seeded task set with 10 new words per language." },
+    { "directory": "datasets/bge-small-en-v1", "title": "BGE English v1", "track": "bge-small-en-v1.5-cls-q8", "note": "Original English targets in an independent BGE semantic space." }
+  ],
+  "participant_config": "experiments/english-pilot.json",
   "collections": [
     {
       "id": "numberbatch-v1-en",

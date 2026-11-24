@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeRun } from '../analysis/search.js';
+import { Suite } from '../src/dataset.js';
 import { participantInfo, auditMatchesRun, summarizeEfforts } from '../analysis/participants.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -162,6 +163,7 @@ export function buildDataset(comparison, neonAudit, solAudit) {
       created_at: run.created_at,
       interventions: run.interventions.length,
       executed_model_verified: info.executedModelVerified,
+      audited_rounds: Object.keys(run.rounds).filter(round => runAudits.some(audit => audit.round === round)).length,
       executed_model_note: info.executedModelNote,
       metrics: {
         rounds: roundEntries.length,
@@ -270,7 +272,7 @@ function publishedFiles() {
   const catalog = read(catalogPath);
   if (!catalog.collections.length || !catalog.collections.some(entry => entry.id === catalog.default)) throw Error('Invalid collection catalog');
   const files = new Map();
-  const index = { default: catalog.default, collections: [] };
+  const index = { default: catalog.default, collections: [], datasets: [], participant_profiles: catalog.participant_config ? read(catalog.participant_config).participants : [] };
   for (const entry of catalog.collections) {
     if (!/^[a-z0-9][a-z0-9.-]*$/.test(entry.id)) throw Error('Invalid collection ID');
     const comparison = mergeComparisons(entry.comparisons.map(read));
@@ -290,7 +292,14 @@ function publishedFiles() {
     }
     const file = entry.id === catalog.default ? 'results.json' : `${entry.id}.json`;
     files.set(file, dataset);
-    index.collections.push({ id: entry.id, title: entry.title, track: entry.track, scope: dataset.scope, file, suite_fingerprint: dataset.suite_fingerprint ?? dataset.runs[0].suite_fingerprint });
+    index.collections.push({ id: entry.id, title: entry.title, track: entry.track, scope: dataset.scope, file, completed_runs: dataset.runs.length, suite_fingerprint: dataset.suite_fingerprint });
+  }
+  for (const entry of catalog.datasets ?? []) {
+    const suite = new Suite(resolve(root, entry.directory));
+    const collections = index.collections.filter(collection => collection.suite_fingerprint === suite.fingerprint);
+    index.datasets.push({ ...entry, id: suite.manifest.id, fingerprint: suite.fingerprint, embedding: suite.manifest.embedding, license: suite.manifest.license,
+      max_guesses: suite.limit, languages: Object.entries(suite.manifest.languages).map(([language, info]) => ({ language, rounds: info.rounds.length, vocabulary_size: info.vocabulary_size })),
+      collections: collections.map(collection => collection.id), completed_runs: collections.reduce((sum, collection) => sum + collection.completed_runs, 0) });
   }
   files.set('catalog.json', index);
   return { files, index };
